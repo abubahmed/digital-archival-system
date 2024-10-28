@@ -1,18 +1,21 @@
 // https://medium.com/@anuragchitti1103/how-to-run-puppeteer-on-aws-lambda-using-layers-763aea8bed8
-import fs from "fs";
 import puppeteer from "puppeteer";
 /**
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3UploadFile } from "./util/s3_upload.mjs";
+import { captureArticle } from "./util/capture_article.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 
 export const handler = async (event, context, callback) => {
   console.log(event);
   console.log(context);
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: true,
+  });
   /**
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -25,61 +28,18 @@ export const handler = async (event, context, callback) => {
     headless: chromium.headless,
     ignoreHTTPSErrors: true,
   });*/
-  const page = await browser.newPage();
+  const webUrls = event.webUrls;
   try {
-    const urlToRead = event.webUrl;
-    const domain = new URL(urlToRead).host;
-    let now = new Date();
-    const outputFilePath = "test";
-
-    now.setHours(48);
-    const cookies = [
-      {
-        name: "max-age",
-        value: `${60 * 60 * 24 * 2}`,
-        url: urlToRead,
-        domain: domain,
-        path: "/",
-        expires: new Date().getTime(),
-        "max-age": 60 * 60 * 24 * 2,
-      },
-    ];
-    await page.setCookie(...cookies);
-    await page.goto(urlToRead, {
-      timeout: 120000,
-      waitUntil: ["networkidle2", "domcontentloaded"],
-    });
-    const html = await page.content();
-    putObjectToS3({ file: html, outputFilePath });
+    for (const url of webUrls) {
+      const { file, name } = await captureArticle({ url, browser });
+      await S3UploadFile({ file: file, path: "articles/" + name });
+    }
   } catch (error) {
-    console.log(error);
+    console.error(error);
   } finally {
-    await page.close();
     await browser.close();
   }
   return;
-};
-
-const putObjectToS3 = async ({ file, outputFilePath }) => {
-  const s3Client = new S3Client({
-    region: process.env.AWS_BUCKET_REGION,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY,
-      secretAccessKey: process.env.AWS_SECRET_KEY,
-    },
-  });
-  const bucketName = process.env.AWS_BUCKET_NAME;
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: outputFilePath,
-    Body: file,
-  });
-  try {
-    const response = await s3Client.send(command);
-    console.log("S3 response:", response);
-  } catch (err) {
-    console.error(err);
-  }
 };
 
 /*
