@@ -1,36 +1,27 @@
 // https://medium.com/@anuragchitti1103/how-to-run-puppeteer-on-aws-lambda-using-layers-763aea8bed8
 import fs from "fs";
 
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer"; // local working version of Lambda function
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
+dotenv.config();
 console.log("Loading function");
 
 export const handler = async (event, context, callback) => {
   console.log("Running archival tool");
 
-  console.log(event);
+  console.log(event.webUrl);
   console.log(context);
 
   console.log("Creating browser");
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(
-      process.env.AWS_EXECUTION_ENV
-        ? "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/bin"
-        : undefined
-    ),
-    headless: chromium.headless,
-    ignoreHTTPSErrors: true,
-  });
+  const browser = await puppeteer.launch();
   console.log("New page");
   const page = await browser.newPage();
   try {
     const urlToRead = event.webUrl;
     const domain = new URL(urlToRead).host;
     let now = new Date();
-    const outputFilePath = "test";
+    const outputFilePath = "google";
 
     now.setHours(48);
     const cookies = [
@@ -54,6 +45,10 @@ export const handler = async (event, context, callback) => {
     const html = await page.content();
     const s3Client = new S3Client({
       region: process.env.AWS_BUCKET_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_SECRET_KEY,
+      },
     });
     const bucketName = process.env.AWS_BUCKET_NAME;
     const command = new PutObjectCommand({
