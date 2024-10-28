@@ -5,7 +5,7 @@ import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/l
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
 import { captureArticle } from "./util/captureArticle.mjs";
-import { captureInstagram } from "./util/captureInstagram.mjs";
+import { capturePost } from "./util/capturePost.mjs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 dotenv.config();
@@ -59,7 +59,7 @@ export const handler = async (event, context, callback) => {
     }
 
     for (const url of event.instagramUrls) {
-      const { file, name } = await captureInstagram({ url, browser });
+      const { file, name } = await capturePost({ url, browser });
       if (!file || !name) {
         return console.error("Failed to capture Instagram post");
       }

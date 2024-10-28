@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-export const captureInstagram = async ({ url, browser }) => {
+export const capturePost = async ({ url, browser }) => {
   if (!url || !browser) {
     console.error("Missing argument(s)");
     return { file: null, name: null };
