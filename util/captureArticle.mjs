@@ -7,6 +7,11 @@ export const captureArticle = async ({ url, browser }) => {
     return { file: null, name: null };
   }
   const local = process.env.LOCAL;
+  function delay(time) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, time);
+    });
+  }
   const page = await browser.newPage();
   try {
     const domain = new URL(url).host;
@@ -28,6 +33,7 @@ export const captureArticle = async ({ url, browser }) => {
       timeout: 120000,
       waitUntil: ["networkidle2", "domcontentloaded"],
     });
+    delay(1000);
     await page.addStyleTag({
       content: `
         @page {
@@ -51,23 +57,16 @@ export const captureArticle = async ({ url, browser }) => {
     console.log(currentDateTime);
     const fileName = `${sanitizedWebUrl}_${currentDateTime}.pdf`;
     console.log(`Capturing article at ${url}`);
-    let pdfBuffer;
+    const pdfOptions = {
+      width: "8.5in",
+      height: "11in",
+      displayHeaderFooter: true,
+      margin: { top: "1in", bottom: "1in" },
+    };
     if (local) {
-      pdfBuffer = await page.pdf({
-        width: "8.5in",
-        height: "11in",
-        displayHeaderFooter: true,
-        path: `documents/${fileName}`,
-        margin: { top: "1in", bottom: "1in" },
-      });
-    } else {
-      pdfBuffer = await page.pdf({
-        width: "8.5in",
-        height: "11in",
-        displayHeaderFooter: true,
-        margin: { top: "1in", bottom: "1in" },
-      });
+      pdfOptions.path = `documents/${fileName}`;
     }
+    const pdfBuffer = await page.pdf(pdfOptions);
     console.log(`Captured article at ${url}`);
     return { file: pdfBuffer, name: fileName };
   } catch (error) {

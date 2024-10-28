@@ -4,14 +4,26 @@ import puppeteer from "puppeteer";
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
-import { S3UploadFile } from "./util/s3_upload.mjs";
-import { captureArticle } from "./util/capture_article.mjs";
+import { captureArticle } from "./util/captureArticle.mjs";
+import { captureInstagram } from "./util/captureInstagram.mjs";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
+dotenv.config();
 
 export const handler = async (event, context, callback) => {
   console.log(event);
   console.log(context);
+  const bucketName = process.env.AWS_BUCKET_NAME;
+  const region = process.env.AWS_BUCKET_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY;
+  const secretAccessKey = process.env.AWS_SECRET_KEY;
+  const local = process.env.LOCAL;
+  if (!bucketName || !region || (local && (!accessKeyId || !secretAccessKey))) {
+    console.error("Missing environment variable(s)");
+    return;
+  }
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: false,
   });
   /**
   const browser = await puppeteer.launch({
@@ -25,12 +37,41 @@ export const handler = async (event, context, callback) => {
     headless: chromium.headless,
     ignoreHTTPSErrors: true,
   });*/
+  const s3Client = new S3Client({
+    region: region,
+    credentials: local ? { accessKeyId: accessKeyId, secretAccessKey: secretAccessKey } : undefined,
+  });
   try {
-    for (const url of event.webUrls) {
+    for (const url of event.articleUrls) {
       const { file, name } = await captureArticle({ url, browser });
+      if (!file || !name) {
+        return console.error("Failed to capture article");
+      }
       const path = "https://www.dailyprincetonian.com/";
       const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      await S3UploadFile({ file: file, path: `${sanitizedPath}/${name}` });
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: `${sanitizedPath}/${name}`,
+        Body: file,
+      });
+      const response = await s3Client.send(command);
+      console.log("S3 response:", response);
+    }
+
+    for (const url of event.instagramUrls) {
+      const { file, name } = await captureInstagram({ url, browser });
+      if (!file || !name) {
+        return console.error("Failed to capture Instagram post");
+      }
+      const path = "https://www.instagram.com/dailyprincetonian/";
+      const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: `${sanitizedPath}/${name}`,
+        Body: file,
+      });
+      const response = await s3Client.send(command);
+      console.log("S3 response:", response);
     }
   } catch (error) {
     console.error(error);
