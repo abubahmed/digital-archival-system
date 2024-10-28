@@ -1,13 +1,15 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 export const captureArticle = async ({ url, browser }) => {
   if (!url || !browser) {
     console.error("Missing argument(s)");
     return { file: null, name: null };
   }
+  const local = process.env.LOCAL;
   const page = await browser.newPage();
   try {
     const domain = new URL(url).host;
-    let now = new Date();
-    now.setHours(48);
     const cookies = [
       {
         name: "max-age",
@@ -32,21 +34,40 @@ export const captureArticle = async ({ url, browser }) => {
           margin: 1in 0 1in 0;
         }
         @page :first {
-          margin-top: 0.75in;
+          margin-top: 0.5in;
           margin-bottom: 1in;
         }
       `,
     });
+    const now = new Date();
     const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const currentDateTime = new Date().toISOString().replace(/[:.]/g, "-");
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    const currentDateTime = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+    console.log(currentDateTime);
     const fileName = `${sanitizedWebUrl}_${currentDateTime}.pdf`;
     console.log(`Capturing article at ${url}`);
-    const pdfBuffer = await page.pdf({
-      width: "8.5in",
-      height: "11in",
-      displayHeaderFooter: true,
-      margin: { top: "1in", bottom: "1in" },
-    });
+    let pdfBuffer;
+    if (local) {
+      pdfBuffer = await page.pdf({
+        width: "8.5in",
+        height: "11in",
+        displayHeaderFooter: true,
+        path: `documents/${fileName}`,
+        margin: { top: "1in", bottom: "1in" },
+      });
+    } else {
+      pdfBuffer = await page.pdf({
+        width: "8.5in",
+        height: "11in",
+        displayHeaderFooter: true,
+        margin: { top: "1in", bottom: "1in" },
+      });
+    }
     console.log(`Captured article at ${url}`);
     return { file: pdfBuffer, name: fileName };
   } catch (error) {

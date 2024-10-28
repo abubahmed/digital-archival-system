@@ -4,11 +4,8 @@ import puppeteer from "puppeteer";
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { S3UploadFile } from "./util/s3_upload.mjs";
 import { captureArticle } from "./util/capture_article.mjs";
-import dotenv from "dotenv";
-dotenv.config();
 
 export const handler = async (event, context, callback) => {
   console.log(event);
@@ -28,11 +25,12 @@ export const handler = async (event, context, callback) => {
     headless: chromium.headless,
     ignoreHTTPSErrors: true,
   });*/
-  const webUrls = event.webUrls;
   try {
-    for (const url of webUrls) {
+    for (const url of event.webUrls) {
       const { file, name } = await captureArticle({ url, browser });
-      await S3UploadFile({ file: file, path: "articles/" + name });
+      const path = "https://www.dailyprincetonian.com/";
+      const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      await S3UploadFile({ file: file, path: `${sanitizedPath}/${name}` });
     }
   } catch (error) {
     console.error(error);
