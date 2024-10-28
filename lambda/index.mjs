@@ -1,18 +1,12 @@
 // https://medium.com/@anuragchitti1103/how-to-run-puppeteer-on-aws-lambda-using-layers-763aea8bed8
 import fs from "fs";
-
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-console.log("Loading function");
 
 export const handler = async (event, context, callback) => {
-  console.log("Running archival tool");
-
   console.log(event);
   console.log(context);
-
-  console.log("Creating browser");
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
@@ -24,7 +18,6 @@ export const handler = async (event, context, callback) => {
     headless: chromium.headless,
     ignoreHTTPSErrors: true,
   });
-  console.log("New page");
   const page = await browser.newPage();
   try {
     const urlToRead = event.webUrl;
@@ -45,12 +38,10 @@ export const handler = async (event, context, callback) => {
       },
     ];
     await page.setCookie(...cookies);
-    console.log("Going to page");
     await page.goto(urlToRead, {
       timeout: 120000,
       waitUntil: ["networkidle2", "domcontentloaded"],
     });
-    console.log("Awaiting page content");
     const html = await page.content();
     const s3Client = new S3Client({
       region: process.env.AWS_BUCKET_REGION,
@@ -62,7 +53,6 @@ export const handler = async (event, context, callback) => {
       Body: html,
     });
     try {
-      console.log("Sending to S3");
       const response = await s3Client.send(command);
       console.log("S3 response:", response);
     } catch (err) {
