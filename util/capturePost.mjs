@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+import axios from "axios";
+import fs from "fs";
 dotenv.config();
 
 export const capturePost = async ({ url, browser }) => {
@@ -46,30 +48,32 @@ export const capturePost = async ({ url, browser }) => {
         elements[i].parentNode.removeChild(elements[i]);
       }
     });
-    const postImageSrcs = [];
-    for (let i = 0; i < 20; i++) {
-      const moreButton = await page.$("._afxw._al46._al47");
-      if (!moreButton) {
-        break;
-      }
-      const imageSrcs = await page.evaluate(() => {
+    const resultSrcs = await page.evaluate(async () => {
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const result = new Set();
+      for (let i = 0; i < 20; i++) {
+        const moreButton = document.querySelector("._afxw._al46._al47");
+        if (!moreButton) {
+          break;
+        }
         const srcs = Array.from(document.querySelectorAll("._aagv img")).map((image) =>
           image.getAttribute("src")
         );
-        return srcs;
-      });
-      for (const src of imageSrcs) {
-        if (!postImageSrcs.includes(src)) {
-          postImageSrcs.push(src);
-        }
+        srcs.forEach((src) => result.add(src));
+        moreButton.click();
+        await delay(500);
       }
-      await moreButton.click();
-      await delay(500);
-    }
-    console.log(postImageSrcs);
-    await page.waitForFunction(() => false);
-    const now = new Date();
+      return Array.from(result);
+    });
+
+    console.log("Images found:", resultSrcs);
     const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    resultSrcs.forEach(async (src, index) => {
+      await downloadImage(src, `images/${sanitizedWebUrl}_${index}.jpg`);
+    });
+    await page.waitForFunction(() => false);
+
+    const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
@@ -98,5 +102,23 @@ export const capturePost = async ({ url, browser }) => {
   } finally {
     await page.close();
     console.log(`Closed page for ${url}`);
+  }
+};
+
+const downloadImage = async (url, filepath) => {
+  try {
+    const response = await axios({
+      url,
+      method: "GET",
+      responseType: "stream",
+    });
+    const writer = fs.createWriteStream(filepath);
+    response.data.pipe(writer);
+    return new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+  } catch (error) {
+    console.error("Error downloading the image:", error);
   }
 };

@@ -42,21 +42,21 @@ export const handler = async (event, context, callback) => {
     credentials: local ? { accessKeyId: accessKeyId, secretAccessKey: secretAccessKey } : undefined,
   });
   try {
-    for (const url of event.articleUrls) {
-      const { file, name } = await captureArticle({ url, browser });
-      if (!file || !name) {
-        return console.error("Failed to capture article");
-      }
-      const path = "https://www.dailyprincetonian.com/";
-      const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: `${sanitizedPath}/${name}`,
-        Body: file,
-      });
-      const response = await s3Client.send(command);
-      console.log("S3 response:", response);
-    }
+    // for (const url of event.articleUrls) {
+    //   const { file, name } = await captureArticle({ url, browser });
+    //   if (!file || !name) {
+    //     return console.error("Failed to capture article");
+    //   }
+    //   const path = "https://www.dailyprincetonian.com/";
+    //   const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    //   const command = new PutObjectCommand({
+    //     Bucket: bucketName,
+    //     Key: `${sanitizedPath}/${name}`,
+    //     Body: file,
+    //   });
+    //   const response = await s3Client.send(command);
+    //   console.log("S3 response:", response);
+    // }
 
     for (const url of event.instagramUrls) {
       const { file, name } = await capturePost({ url, browser });
