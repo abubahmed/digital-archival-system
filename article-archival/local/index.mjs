@@ -4,7 +4,7 @@ import puppeteer from "puppeteer";
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
-import { captureArticle } from "./util/captureArticle.mjs";
+import { captureArticle } from "./util/capture-article.mjs";
 import { capturePost } from "./util/capturePost.mjs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";

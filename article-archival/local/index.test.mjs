@@ -1,5 +1,5 @@
 import { handler } from "./index.mjs";
-import payload from "./events/payload.json" assert { type: "json" };
+import payload from "../events/payload.json" assert { type: "json" };
 
 handler({
   instagramUrls: payload.instagramUrls,
