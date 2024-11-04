@@ -4,7 +4,7 @@ import puppeteer from "puppeteer";
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
-import { captureArticle } from "./util/capture-article.mjs";
+import { capturePost } from "./util/capture_post.mjs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 dotenv.config();
@@ -42,11 +42,11 @@ export const handler = async (event, context, callback) => {
   });
   try {
     for (const url of event.webUrls) {
-      const { file, name } = await captureArticle({ url, browser });
+      const { file, name } = await capturePost({ url, browser });
       if (!file || !name) {
-        return console.error("Failed to capture article");
+        return console.error("Failed to capture Instagram post");
       }
-      const PATH = "https://www.dailyprincetonian.com/";
+      const PATH = "https://www.instagram.com/dailyprincetonian/";
       const sanitizedPath = PATH.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       const command = new PutObjectCommand({
         Bucket: bucketName,

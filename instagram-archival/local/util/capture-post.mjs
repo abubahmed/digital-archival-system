@@ -69,7 +69,7 @@ export const capturePost = async ({ url, browser }) => {
     console.log("Images found:", resultSrcs);
     const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
     resultSrcs.forEach(async (src, index) => {
-      await downloadImage(src, `images/${sanitizedWebUrl}_${index}.jpg`);
+      await downloadImage(src, `documents/${sanitizedWebUrl}_${index}.jpg`);
     });
     await page.waitForFunction(() => false);
 
@@ -122,3 +122,19 @@ const downloadImage = async (url, filepath) => {
     console.error("Error downloading the image:", error);
   }
 };
+
+// for (const url of event.instagramUrls) {
+//   const { file, name } = await capturePost({ url, browser });
+//   if (!file || !name) {
+//     return console.error("Failed to capture Instagram post");
+//   }
+//   const path = "https://www.instagram.com/dailyprincetonian/";
+//   const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+//   const command = new PutObjectCommand({
+//     Bucket: bucketName,
+//     Key: `${sanitizedPath}/${name}`,
+//     Body: file,
+//   });
+//   const response = await s3Client.send(command);
+//   console.log("S3 response:", response);
+// }
