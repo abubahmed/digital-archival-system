@@ -2,8 +2,7 @@ import { handler } from "./index.mjs";
 import payload from "../events/payload.json" assert { type: "json" };
 
 handler({
-  instagramUrls: payload.instagramUrls,
-  articleUrls: payload.articleUrls,
+  webUrls: payload.webUrls,
 }).catch((e) => {
   console.error(e);
 });

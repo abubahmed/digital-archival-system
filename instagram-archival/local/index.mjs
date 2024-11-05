@@ -1,11 +1,13 @@
 // https://medium.com/@anuragchitti1103/how-to-run-puppeteer-on-aws-lambda-using-layers-763aea8bed8
-import puppeteer from "puppeteer";
 /**
 import puppeteer from "/opt/puppeteer_layer/nodejs/node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js";
 import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromium/build/index.js";
 */
-import { capturePost } from "./util/capture_post.mjs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { ApifyClient } from "apify-client";
+import { joinImages } from "join-images";
+import client from "https";
+import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -21,9 +23,6 @@ export const handler = async (event, context, callback) => {
     console.error("Missing environment variable(s)");
     return;
   }
-  const browser = await puppeteer.launch({
-    headless: false,
-  });
   /**
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -41,27 +40,120 @@ export const handler = async (event, context, callback) => {
     credentials: local ? { accessKeyId: accessKeyId, secretAccessKey: secretAccessKey } : undefined,
   });
   try {
-    for (const url of event.webUrls) {
-      const { file, name } = await capturePost({ url, browser });
-      if (!file || !name) {
-        return console.error("Failed to capture Instagram post");
+    const posts = await fetchInstagramPosts({ webUrls: event.webUrls });
+    posts.forEach(async (post) => {
+      const { images, videoUrl, type } = post;
+      if (type === "sidecar") {
+        await mergeImages({ imageUrls: images });
       }
-      const PATH = "https://www.instagram.com/dailyprincetonian/";
-      const sanitizedPath = PATH.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: `${sanitizedPath}/${name}`,
-        Body: file,
-      });
-      const response = await s3Client.send(command);
-      console.log("S3 response:", response);
-    }
+    });
+
+    // const PATH = "https://www.instagram.com/dailyprincetonian/";
+    // const sanitizedPath = PATH.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    // const command = new PutObjectCommand({
+    //   Bucket: bucketName,
+    //   Key: `${sanitizedPath}/${name}`,
+    //   Body: file,
+    // });
+    // const response = await s3Client.send(command);
+    // console.log("S3 response:", response);
   } catch (error) {
     console.error(error);
-  } finally {
-    await browser.close();
   }
   return;
+};
+
+const downloadImage = async (url, filepath) => {
+  try {
+    return new Promise((resolve, reject) => {
+      client.get(url, (res) => {
+        if (res.statusCode === 200) {
+          res
+            .pipe(fs.createWriteStream(filepath))
+            .on("error", reject)
+            .once("close", () => resolve(filepath));
+        } else {
+          res.resume();
+          reject(new Error(`Request Failed With a Status Code: ${res.statusCode}`));
+        }
+      });
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+const mergeImages = async ({ imageUrls }) => {
+  if (!imageUrls || imageUrls.length === 0) {
+    console.error("Missing imageUrls in input");
+    return;
+  }
+  try {
+    const imageDests = [];
+    for (const imageUrl of imageUrls) {
+      const sanitizedPath = `${imageUrl.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg`;
+      imageDests.push(sanitizedPath);
+      await downloadImage(imageUrl, sanitizedPath);
+    }
+    const img = await joinImages(imageDests);
+    await img.toFile("out.jpg");
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const fetchInstagramPosts = async ({ webUrls }) => {
+  const APIFY_TOKEN = process.env.APIFY_TOKEN;
+  if (APIFY_TOKEN === undefined || APIFY_TOKEN === "") {
+    console.error("Missing APIFY_TOKEN in environment");
+    return [];
+  }
+  if (!webUrls || webUrls.length === 0) {
+    console.error("Missing webUrls in input");
+    return [];
+  }
+  try {
+    const client = new ApifyClient({
+      token: APIFY_TOKEN,
+    });
+    const input = {
+      addParentData: false,
+      directUrls: webUrls,
+      enhanceUserSearchWithFacebookPage: false,
+      isUserReelFeedURL: false,
+      isUserTaggedFeedURL: false,
+      resultsLimit: 2,
+      resultsType: "posts",
+      searchLimit: 1,
+      searchType: "hashtag",
+    };
+    const run = await client.actor("apify/instagram-scraper").call(input);
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
+    const posts = [];
+    items.forEach((item) => {
+      if (
+        item.type &&
+        item.url &&
+        item.timestamp &&
+        item.shortCode &&
+        ((item.images && item.images.length > 0) || item.videoUrl)
+      ) {
+        posts.push({
+          timestamp: item.timestamp,
+          url: item.url ? item.url : null,
+          type: item.type.toLowerCase(),
+          images: item.images && item.images.length > 0 ? item.images : null,
+          videoUrl: item.videoUrl ? item.videoUrl : null,
+          shortCode: item.shortCode,
+        });
+      }
+    });
+    return posts;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 /*
