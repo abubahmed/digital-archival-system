@@ -45,11 +45,10 @@ export const handler = async (event, context, callback) => {
       if (!file || !name) {
         return console.error("Failed to capture article");
       }
-      const path = "https://www.dailyprincetonian.com/";
-      const sanitizedPath = path.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const subFolder = "articles"
       const command = new PutObjectCommand({
         Bucket: bucketName,
-        Key: `${sanitizedPath}/${name}`,
+        Key: `${subFolder}/${name}`,
         Body: file,
       });
       const response = await s3Client.send(command);
