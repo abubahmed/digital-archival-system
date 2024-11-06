@@ -5,9 +5,10 @@ import chromium from "/opt/puppeteer_layer/nodejs/node_modules/@sparticuz/chromi
 */
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { ApifyClient } from "apify-client";
-import { joinImages } from "join-images";
-import client from "https";
 import fs from "fs";
+import axios from "axios";
+import PDFDocument from "pdfkit";
+import sizeOf from "image-size";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -41,10 +42,30 @@ export const handler = async (event, context, callback) => {
   });
   try {
     const posts = await fetchInstagramPosts({ webUrls: event.webUrls });
+    if (!posts || posts.length === 0) {
+      return console.error("Failed to fetch Instagram posts");
+    }
     posts.forEach(async (post) => {
       const { images, videoUrl, type } = post;
+      const timestampDate = new Date(post.timestamp);
+      const year = timestampDate.getFullYear();
+      const month = String(timestampDate.getMonth() + 1).padStart(2, "0");
+      const day = String(timestampDate.getDate()).padStart(2, "0");
+      const hours = String(timestampDate.getHours()).padStart(2, "0");
+      const minutes = String(timestampDate.getMinutes()).padStart(2, "0");
+      const seconds = String(timestampDate.getSeconds()).padStart(2, "0");
+      const timestampDateFormatted = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
       if (type === "sidecar") {
-        await mergeImages({ imageUrls: images });
+        const fileName = post.url + timestampDateFormatted;
+        const sanitizedPath = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        const downloadPath = `./../documents/${sanitizedPath}.pdf`;
+        await downloadImagesAsPdf({ imageUrls: images, pdfPath: downloadPath });
+      } else if (type === "video") {
+        const fileName = post.url + timestampDateFormatted;
+        const sanitizedPath = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        const downloadPath = `./../documents/${sanitizedPath}.mp4`;
+        await downloadVideo({ videoUrl, videoPath: downloadPath });
+        
       }
     });
 
@@ -63,45 +84,56 @@ export const handler = async (event, context, callback) => {
   return;
 };
 
-const downloadImage = async (url, filepath) => {
-  try {
-    return new Promise((resolve, reject) => {
-      client.get(url, (res) => {
-        if (res.statusCode === 200) {
-          res
-            .pipe(fs.createWriteStream(filepath))
-            .on("error", reject)
-            .once("close", () => resolve(filepath));
-        } else {
-          res.resume();
-          reject(new Error(`Request Failed With a Status Code: ${res.statusCode}`));
-        }
-      });
-    });
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
-
-const mergeImages = async ({ imageUrls }) => {
-  if (!imageUrls || imageUrls.length === 0) {
-    console.error("Missing imageUrls in input");
+const downloadImagesAsPdf = async ({ imageUrls, pdfPath }) => {
+  if (!imageUrls || imageUrls.length === 0 || !pdfPath) {
+    console.error("Missing argument(s)");
     return;
   }
   try {
-    const imageDests = [];
+    const doc = new PDFDocument({ autoFirstPage: false });
+    const writeStream = fs.createWriteStream(pdfPath);
+    doc.pipe(writeStream);
     for (const imageUrl of imageUrls) {
-      const sanitizedPath = `${imageUrl.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg`;
-      imageDests.push(sanitizedPath);
-      await downloadImage(imageUrl, sanitizedPath);
+      const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+      const imageBuffer = Buffer.from(response.data, "binary");
+      const dimensions = sizeOf(imageBuffer);
+      doc
+        .addPage({ size: [dimensions.width, dimensions.height] })
+        .image(imageBuffer, 0, 0, { width: dimensions.width, height: dimensions.height });
     }
-    const img = await joinImages(imageDests);
-    await img.toFile("out.jpg");
+    doc.end();
+    await new Promise((resolve, reject) => {
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    });
+    console.log(`Images saved as PDF to ${pdfPath}`);
   } catch (error) {
-    console.error(error);
+    console.error(`Failed to download images and save as PDF: ${error.message}`);
   }
 };
+
+async function downloadVideo({ videoUrl, videoPath }) {
+  if (!videoUrl || !videoPath) {
+    console.error("Missing argument(s)");
+    return;
+  }
+  const file = fs.createWriteStream(videoPath);
+  try {
+    const response = await axios({
+      method: "get",
+      url: videoUrl,
+      responseType: "stream",
+    });
+    response.data.pipe(file);
+    await new Promise((resolve, reject) => {
+      file.on("finish", resolve);
+      file.on("error", reject);
+    });
+    console.log("Video saved to: ", videoPath);
+  } catch (error) {
+    console.error(`Failed to download video: ${error.message}`);
+  }
+}
 
 const fetchInstagramPosts = async ({ webUrls }) => {
   const APIFY_TOKEN = process.env.APIFY_TOKEN;
