@@ -118,7 +118,7 @@ export const handler = async (event, context, callback) => {
       } else {
         return log.error("Invalid post type; cancelled archival");
       }
-    };
+    }
   } catch (error) {
     log.error("Failed to archive Instagram posts");
     log.error(error);
