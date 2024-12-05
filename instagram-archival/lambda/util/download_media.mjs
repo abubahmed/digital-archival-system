@@ -3,12 +3,12 @@ import fs from "fs";
 import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
-import log from "npmlog";
+import log from "./logger.mjs";
 
 export const downloadImagesAsPdf = async ({ imageUrls, pdfPath }) => {
   if (!imageUrls || imageUrls.length === 0 || !pdfPath) {
     log.error("Missing argument(s); cancelled local PDF download");
-    return { status: "error" }
+    return { status: "error", message: "Missing argument(s)" };
   }
   try {
     const doc = new PDFDocument({ autoFirstPage: false });
@@ -27,17 +27,17 @@ export const downloadImagesAsPdf = async ({ imageUrls, pdfPath }) => {
       writeStream.on("finish", resolve);
       writeStream.on("error", reject);
     });
-    return { status: "success" };
+    return { status: "success", message: "PDF created" };
   } catch (error) {
     log.error(error);
-    return { status: "error" }
+    return { status: "error", message: error.message };
   }
 };
 
 export const downloadImagesAsPdfBuffer = async ({ imageUrls }) => {
   if (!imageUrls || imageUrls.length === 0) {
     log.error("Missing argument(s); cancelled PDF buffer creation");
-    return { status: "error" }
+    return { status: "error", message: "Missing argument(s)" };
   }
   try {
     const doc = new PDFDocument({ autoFirstPage: false });
@@ -59,17 +59,17 @@ export const downloadImagesAsPdfBuffer = async ({ imageUrls }) => {
       passThrough.on("error", reject);
     });
     const buffer = Buffer.concat(chunks);
-    return { status: "success", buffer };
+    return { status: "success", buffer, message: "PDF buffer created" };
   } catch (error) {
     log.error(error);
-    return { status: "error" }
+    return { status: "error", message: error.message };
   }
 };
 
 export const downloadVideoAsBuffer = async ({ videoUrl }) => {
   if (!videoUrl) {
     log.error("Missing argument(s); cancelled video buffer creation");
-    return { status: "error" }
+    return { status: "error", message: "Missing argument(s)" };
   }
   try {
     const response = await axios({
@@ -86,17 +86,17 @@ export const downloadVideoAsBuffer = async ({ videoUrl }) => {
       passThrough.on("error", reject);
     });
     const buffer = Buffer.concat(chunks);
-    return { status: "success", buffer };
+    return { status: "success", buffer, message: "Video buffer created" };
   } catch (error) {
     log.error(error);
-    return null;
+    return { status: "error", message: error.message };
   }
 };
 
 export const downloadVideo = async ({ videoUrl, videoPath }) => {
   if (!videoUrl || !videoPath) {
     log.error("Missing argument(s); cancelled local video download");
-    return { status: "error" }
+    return { status: "error", message: "Missing argument(s)" };
   }
   const file = fs.createWriteStream(videoPath);
   try {
@@ -110,9 +110,9 @@ export const downloadVideo = async ({ videoUrl, videoPath }) => {
       file.on("finish", resolve);
       file.on("error", reject);
     });
-    return { status: "success" };
+    return { status: "success", message: "Video downloaded" };
   } catch (error) {
     log.error(error);
-    return { status: "error" }
+    return { status: "error", message: error.message };
   }
 };

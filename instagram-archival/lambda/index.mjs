@@ -1,6 +1,4 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { ApifyClient } from "apify-client";
-import log from "npmlog";
 import dotenv from "dotenv";
 import {
   downloadImagesAsPdf,
@@ -8,7 +6,9 @@ import {
   downloadVideoAsBuffer,
   downloadVideo,
 } from "./util/download_media.mjs";
-import { readArchivedPosts, saveArchivedPost, deleteArchivedPost } from "./util/manage_db.mjs";
+import { readArchivedPost, saveArchivedPost } from "./util/manage_db.mjs";
+import { putToS3, formatTimestamp, fetchInstagramPosts } from "./util/misc.mjs";
+import log from "./util/logger.mjs"
 dotenv.config();
 
 export const handler = async (event, context, callback) => {
@@ -57,7 +57,6 @@ export const handler = async (event, context, callback) => {
       };
     }
     log.info("Instagram posts fetched");
-    console.log();
 
     for (const post of posts) {
       const { images, videoUrl, type, timestamp, url, postId } = post;
@@ -69,7 +68,7 @@ export const handler = async (event, context, callback) => {
         continue;
       }
       log.info("Post data:");
-      console.log(post);
+      log.info(post);
 
       const subFolder = "instagram";
       const timestampDateFormatted = formatTimestamp({ timestamp });
@@ -79,261 +78,80 @@ export const handler = async (event, context, callback) => {
       const S3Path = `${subFolder}/${sanitizedFileName}.${fileExtension}`;
       const localPath = `./../documents/${sanitizedFileName}.${fileExtension}`;
 
-      if (type === "sidecar" && local) {
-        try {
-          log.info("Downloading images locally as PDF...");
-          const pdfDownloadResponse = await downloadImagesAsPdf({
-            imageUrls: images,
-            pdfPath: localPath,
-          });
-          if (pdfDownloadResponse.status === "error") {
-            throw new Error("Failed to download images as PDF; cancelled S3 upload");
-          }
-          log.info("Images saved as PDF locally");
-          log.info("Creating PDF buffer for upload to S3...");
-          const pdfBufferResponse = await downloadImagesAsPdfBuffer({ imageUrls: images });
-          if (pdfBufferResponse.status === "error") {
-            throw new Error("Failed to create PDF buffer; cancelled S3 upload");
-          }
-          log.info("PDF buffer created");
-          log.info("Uploading PDF to S3...");
-          const response = await putToS3({
-            file: pdfBufferResponse.buffer,
-            S3Client: s3Client,
-            bucketName,
-            path: S3Path,
-          });
-          if (response.status === "error" || response.response.$metadata.httpStatusCode != 200) {
-            throw new Error("Failed to upload to S3");
-          }
-          log.info("S3 response:");
-          console.log(response.response);
-          log.info("Media uploaded to S3");
-          log.info("Saving post to database...");
-          const savePostResponse = saveArchivedPost({
-            url,
-            created_timestamp: timestamp,
-            post_id: postId,
-          });
-          if (savePostResponse.status === "error") {
-            throw new Error("Failed to save post to database");
-          }
-        } catch (error) {
-          log.error(error.message);
-          continue;
-        }
-      } else if (type === "sidecar" && !local) {
-        try {
-          log.info("Creating PDF buffer for upload to S3...");
-          const pdfBufferResponse = await downloadImagesAsPdfBuffer({ imageUrls: images });
-          if (pdfBufferResponse.status === "error") {
-            throw new Error("Failed to create PDF buffer; cancelled S3 upload");
-          }
-          log.info("PDF buffer created");
-          log.info("Uploading PDF to S3...");
-          const response = await putToS3({
-            file: pdfBufferResponse.buffer,
-            S3Client: s3Client,
-            bucketName,
-            path: S3Path,
-          });
-          if (response.status === "error" || response.response.$metadata.httpStatusCode != 200) {
-            throw new Error("Failed to upload to S3");
-          }
-          log.info("S3 response:");
-          console.log(response.response);
-          log.info("Media uploaded to S3");
-          log.info("Saving post to database...");
-          const savePostResponse = saveArchivedPost({
-            url,
-            created_timestamp: timestamp,
-            post_id: postId,
-          });
-          if (savePostResponse.status === "error") {
-            throw new Error("Failed to save post to database");
-          }
-        } catch (error) {
-          log.error(error.message);
-          continue;
-        }
-      } else if (type === "video" && local) {
-        try {
-          log.info("Downloading video locally...");
-          const videoDownloadResponse = await downloadVideo({ videoUrl, videoPath: localPath });
-          if (videoDownloadResponse.status === "error") {
-            throw new Error("Failed to download video; cancelled S3 upload");
-          }
-          log.info("Video saved locally");
-          log.info("Creating video buffer for upload to S3...");
-          const videoBufferResponse = await downloadVideoAsBuffer({ videoUrl });
-          if (videoBufferResponse.status === "error") {
-            throw new Error("Failed to create video buffer; cancelled S3 upload");
-          }
-          log.info("Video buffer created");
-          log.info("Uploading video to S3...");
-          const response = await putToS3({
-            file: videoBufferResponse.buffer,
-            S3Client: s3Client,
-            bucketName,
-            path: S3Path,
-          });
-          if (response.status === "error" || response.response.$metadata.httpStatusCode != 200) {
-            throw new Error("Failed to upload to S3");
-          }
-          log.info("S3 response:");
-          console.log(response.response);
-          log.info("Media uploaded to S3");
-          log.info("Saving post to database...");
-          const savePostResponse = saveArchivedPost({
-            url,
-            created_timestamp: timestamp,
-            post_id: postId,
-          });
-          if (savePostResponse.status === "error") {
-            throw new Error("Failed to save post to database");
-          }
-        } catch (error) {
-          log.error(error.message);
-          continue;
-        }
-      } else if (type === "video" && !local) {
-        try {
-          log.info("Creating video buffer for upload to S3...");
-          const videoBufferResponse = await downloadVideoAsBuffer({ videoUrl });
-          if (videoBufferResponse.status === "error") {
-            throw new Error("Failed to create video buffer; cancelled S3 upload");
-          }
-          log.info("Video buffer created");
-          log.info("Uploading video to S3...");
-          const response = await putToS3({
-            file: videoBufferResponse.buffer,
-            S3Client: s3Client,
-            bucketName,
-            path: S3Path,
-          });
-          if (response.status === "error" || response.response.$metadata.httpStatusCode != 200) {
-            throw new Error("Failed to upload to S3");
-          }
-          log.info("S3 response:");
-          console.log(response.response);
-          log.info("Media uploaded to S3");
-          log.info("Saving post to database...");
-          const savePostResponse = saveArchivedPost({
-            url,
-            created_timestamp: timestamp,
-            post_id: postId,
-          });
-          if (savePostResponse.status === "error") {
-            throw new Error("Failed to save post to database");
-          }
-        } catch (error) {
-          log.error(error.message);
-          continue;
-        }
+      log.info("Checking for existing post in database...");
+      const response = readArchivedPost({ post_id: postId });
+      if (response.status === "error") {
+        log.error("Failed to check for existing post in database");
+        continue;
       }
+      if (response.row) {
+        log.error("Existing post found in database, skipping post");
+        continue;
+      }
+      log.info("No existing post found in database, proceeding with archival...");
+
+      if (local) {
+        log.info("Downloading media locally...");
+        const mediaDownloadResponse =
+          type === "video"
+            ? await downloadVideo({ videoUrl, videoPath: localPath })
+            : await downloadImagesAsPdf({ imageUrls: images, pdfPath: localPath });
+        if (mediaDownloadResponse.status === "error") {
+          log.error("Failed to download media locally, skipping post");
+          continue;
+        }
+        log.info("Media saved locally");
+      }
+
+      log.info("Downloading media as buffer...");
+      const mediaBufferResponse =
+        type === "video"
+          ? await downloadVideoAsBuffer({ videoUrl })
+          : await downloadImagesAsPdfBuffer({ imageUrls: images });
+      if (mediaBufferResponse.status === "error") {
+        log.error("Failed to download media as buffer, skipping post");
+        continue;
+      }
+      log.info("Media buffer created");
+
+      log.info("Uploading media to S3...");
+      const S3Response = await putToS3({
+        file: mediaBufferResponse.buffer,
+        S3Client: s3Client,
+        bucketName,
+        path: S3Path,
+      });
+      if (S3Response.status === "error" || S3Response.response.$metadata.httpStatusCode != 200) {
+        log.error("Failed to upload to S3, skipping post");
+        continue;
+      }
+      log.info("S3 response:");
+      console.log(S3Response.response);
+      log.info("Media uploaded to S3");
+
+      log.info("Saving post to database...");
+      const savePostResponse = saveArchivedPost({
+        url,
+        created_timestamp: timestamp,
+        post_id: postId,
+      });
+      if (savePostResponse.status === "error") {
+        log.error("Failed to save post to database");
+        continue;
+      }
+      log.info("Post saved to database");
     }
+    log.info("All Instagram posts archived");
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Instagram archival process complete" }),
+    };
   } catch (error) {
     log.error("Failed to archive Instagram posts");
     log.error(error);
     return {
       statusCode: 500,
       body: JSON.stringify({ message: "Failed to archive Instagram posts" }),
-    };
-  }
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Instagram archival completed" }),
-  };
-};
-
-const putToS3 = async ({ file, S3Client, bucketName, path }) => {
-  if (!file || !S3Client || !bucketName || !path) {
-    log.error("Missing argument(s); cancelled S3 upload");
-    throw new Error();
-  }
-  try {
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: path,
-      Body: file,
-    });
-    const response = await S3Client.send(command);
-    return {
-      status: "success",
-      response,
-    };
-  } catch (error) {
-    log.error(error);
-    return {
-      status: "error",
-      response: null,
-    };
-  }
-};
-
-const formatTimestamp = ({ timestamp }) => {
-  const timestampDate = new Date(timestamp);
-  const year = timestampDate.getFullYear();
-  const month = String(timestampDate.getMonth() + 1).padStart(2, "0");
-  const day = String(timestampDate.getDate()).padStart(2, "0");
-  const hours = String(timestampDate.getHours()).padStart(2, "0");
-  const minutes = String(timestampDate.getMinutes()).padStart(2, "0");
-  const seconds = String(timestampDate.getSeconds()).padStart(2, "0");
-  const timestampDateFormatted = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
-  return timestampDateFormatted;
-};
-
-const fetchInstagramPosts = async () => {
-  const APIFY_TOKEN = process.env.APIFY_TOKEN;
-  if (APIFY_TOKEN === undefined || APIFY_TOKEN === "") {
-    log.error("Missing environment variable(s); cancelled Instagram scraping");
-    throw new Error();
-  }
-  try {
-    const client = new ApifyClient({
-      token: APIFY_TOKEN,
-    });
-    log.info("Apify client created");
-    const resultLimit = 4;
-    const instagramAccount = "dailyprincetonian";
-    const input = {
-      directUrls: [`https://www.instagram.com/${instagramAccount}/`],
-      resultsType: "posts",
-      resultsLimit: resultLimit,
-      searchType: "hashtag",
-      searchLimit: 1,
-    };
-    log.info("Scraping Instagram posts...");
-    const run = await client.actor("apify/instagram-scraper").call(input);
-    const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    const posts = [];
-    items.forEach((item) => {
-      if (
-        item.type &&
-        item.url &&
-        item.timestamp &&
-        item.id &&
-        ((item.images && item.images.length > 0) || item.videoUrl)
-      ) {
-        posts.push({
-          timestamp: item.timestamp,
-          url: item.url ? item.url : null,
-          type: item.type.toLowerCase(),
-          images: item.images && item.images.length > 0 ? item.images : null,
-          videoUrl: item.videoUrl ? item.videoUrl : null,
-          postId: item.id,
-        });
-      }
-    });
-    return {
-      status: "success",
-      posts,
-    };
-  } catch (error) {
-    log.error(error);
-    return {
-      status: "error",
-      posts: [],
     };
   }
 };
