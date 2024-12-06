@@ -3,10 +3,10 @@ import log from "./logger.mjs"
 
 export const readArchivedPost = ({ post_id }) => {
   if (!post_id) {
-    log.error("Missing required parameters");
+    log.error("Missing required argument(s)");
     return {
       status: "error",
-      message: "Missing required parameters",
+      message: "Missing required argument(s)",
       row: null,
     };
   }
@@ -23,20 +23,17 @@ export const readArchivedPost = ({ post_id }) => {
     `);
     const row = db.prepare("SELECT * FROM posts WHERE post_id = ?").get(post_id);
     if (!row) {
-      log.info("No row found");
       db.close();
       return {
         status: "success",
-        message: "Row not found",
+        message: `Row with post_id ${post_id} not found`,
         row: null,
       };
     }
-    log.info("Row retrieved:");
-    log.info(row);
     db.close();
     return {
       status: "success",
-      message: "Row retrieved",
+      message: `Row with post_id ${post_id} retrieved`,
       row,
     };
   } catch (error) {
@@ -64,19 +61,17 @@ export const readArchivedPosts = () => {
     `);
     const rows = db.prepare("SELECT * FROM posts").all();
     if (!rows) {
-      log.info("No rows found");
       db.close();
       return {
         status: "success",
-        message: "Rows not found",
+        message: "No rows found",
         rows: [],
       };
     }
-    log.info("Rows retrieved:", rows);
     db.close();
     return {
       status: "success",
-      message: "Rows retrieved",
+      message: "All rows retrieved",
       rows,
     };
   } catch (error) {
@@ -92,10 +87,10 @@ export const readArchivedPosts = () => {
 
 export const saveArchivedPost = ({ url, created_timestamp, post_id }) => {
   if (!url || !created_timestamp || !post_id) {
-    log.error("Missing required parameters");
+    log.error("Missing required argument(s)");
     return {
       status: "error",
-      message: "Missing required parameters",
+      message: "Missing required argument(s)",
     };
   }
   try {
@@ -111,11 +106,11 @@ export const saveArchivedPost = ({ url, created_timestamp, post_id }) => {
   `);
     const existingPost = db.prepare("SELECT * FROM posts WHERE post_id = ?").get(post_id);
     if (existingPost) {
-      log.error("Post with the same post_id already exists");
+      log.error(`Post with post_id ${post_id} already exists`);
       db.close();
       return {
         status: "error",
-        message: "Post with the same post_id already exists",
+        message: `Post with post_id ${post_id} already exists`,
       };
     }
     const newPost = db.prepare(
@@ -123,11 +118,10 @@ export const saveArchivedPost = ({ url, created_timestamp, post_id }) => {
     );
     const archived_timestamp = new Date().toISOString();
     newPost.run(url, created_timestamp, archived_timestamp, post_id);
-    log.info("Post with post_id:", post_id, "inserted");
     db.close();
     return {
       status: "success",
-      message: "Post inserted",
+      message: `Post with post_id ${post_id} saved`,
     };
   } catch (error) {
     log.error(error.message);
@@ -141,10 +135,10 @@ export const saveArchivedPost = ({ url, created_timestamp, post_id }) => {
 
 export const deleteArchivedPost = ({ post_id }) => {
   if (!post_id) {
-    log.error("Missing required parameters");
+    log.error("Missing required argument(s)");
     return {
       status: "error",
-      message: "Missing required parameters",
+      message: "Missing required argument(s)",
     };
   }
   try {
@@ -160,20 +154,19 @@ export const deleteArchivedPost = ({ post_id }) => {
   `);
     const existingPost = db.prepare("SELECT * FROM posts WHERE post_id = ?").get(post_id);
     if (!existingPost) {
-      log.error("Post with the same post_id does not exist");
+      log.error(`Post with post_id ${post_id} does not exist`);
       db.close();
       return {
         status: "error",
-        message: "Post with the same post_id does not exist",
+        message: `Post with post_id ${post_id} does not exist`,
       };
     }
     const deletePost = db.prepare("DELETE FROM posts WHERE post_id = ?");
     deletePost.run(post_id);
-    log.info("Post with post_id:", post_id, "deleted");
     db.close();
     return {
       status: "success",
-      message: "Post deleted",
+      message: `Post with post_id ${post_id} deleted`,
     };
   } catch (error) {
     log.error(error.message);

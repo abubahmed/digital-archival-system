@@ -79,12 +79,12 @@ export const handler = async (event, context, callback) => {
       const localPath = `./../documents/${sanitizedFileName}.${fileExtension}`;
 
       log.info("Checking for existing post in database...");
-      const response = readArchivedPost({ post_id: postId });
-      if (response.status === "error") {
+      const postCheckResponse = readArchivedPost({ post_id: postId });
+      if (postCheckResponse.status === "error") {
         log.error("Failed to check for existing post in database");
         continue;
       }
-      if (response.row) {
+      if (postCheckResponse.row) {
         log.error("Existing post found in database, skipping post");
         continue;
       }
@@ -95,7 +95,7 @@ export const handler = async (event, context, callback) => {
         const mediaDownloadResponse =
           type === "video"
             ? await downloadVideo({ videoUrl, videoPath: localPath })
-            : await downloadImagesAsPdf({ imageUrls: images, pdfPath: localPath });
+            : await downloadImagesAsPdf({ imageUrls: images, pdfPath: localPath, post: post });
         if (mediaDownloadResponse.status === "error") {
           log.error("Failed to download media locally, skipping post");
           continue;
@@ -107,7 +107,7 @@ export const handler = async (event, context, callback) => {
       const mediaBufferResponse =
         type === "video"
           ? await downloadVideoAsBuffer({ videoUrl })
-          : await downloadImagesAsPdfBuffer({ imageUrls: images });
+          : await downloadImagesAsPdfBuffer({ imageUrls: images, post: post });
       if (mediaBufferResponse.status === "error") {
         log.error("Failed to download media as buffer, skipping post");
         continue;

@@ -67,7 +67,7 @@ export const fetchInstagramPosts = async () => {
       token: APIFY_TOKEN,
     });
     log.info("Apify client created");
-    const resultLimit = 4;
+    const resultLimit = 10;
     const instagramAccount = "dailyprincetonian";
     const input = {
       directUrls: [`https://www.instagram.com/${instagramAccount}/`],
@@ -103,6 +103,16 @@ export const fetchInstagramPosts = async () => {
           images: item.images && item.images.length > 0 ? item.images : null,
           videoUrl: item.videoUrl ? item.videoUrl : null,
           postId: item.id,
+          shortCode: item.shortCode ? item.shortCode : null,
+          caption: item.caption ? item.caption : null,
+          hashtags: item.hashtags ? item.hashtags.join(", ") : null,
+          mentions: item.mentions ? item.mentions.join(", ") : null,
+          commentsCount: item.commentsCount ? item.commentsCount : null,
+          likesCount: item.likesCount ? item.likesCount : null,
+          alt: item.alt ? item.alt : null,
+          ownerFullName: item.ownerFullName ? item.ownerFullName : null,
+          ownerUsername: item.ownerUsername ? item.ownerUsername : null,
+          ownerId: item.ownerId ? item.ownerId : null,
         });
       }
     });
