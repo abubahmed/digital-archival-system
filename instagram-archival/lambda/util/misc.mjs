@@ -13,12 +13,14 @@ export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
       message: "Missing argument(s)",
     };
   }
+
   try {
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: path,
       Body: file,
     });
+
     const response = await S3Client.send(command);
     return {
       status: "success",
@@ -62,12 +64,13 @@ export const fetchInstagramPosts = async () => {
       posts: [],
     };
   }
+
   try {
     const client = new ApifyClient({
       token: APIFY_TOKEN,
     });
     log.info("Apify client created");
-    const resultLimit = 10;
+    const resultLimit = 3;
     const instagramAccount = "dailyprincetonian";
     const input = {
       directUrls: [`https://www.instagram.com/${instagramAccount}/`],
@@ -76,9 +79,11 @@ export const fetchInstagramPosts = async () => {
       searchType: "hashtag",
       searchLimit: 1,
     };
+
     log.info("Scraping Instagram posts...");
     const run = await client.actor("apify/instagram-scraper").call(input);
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  
     if (!items || items.length === 0) {
       log.error("No Instagram posts found");
       return {
@@ -87,6 +92,7 @@ export const fetchInstagramPosts = async () => {
         posts: [],
       };
     }
+
     const posts = [];
     items.forEach((item) => {
       if (
@@ -107,8 +113,8 @@ export const fetchInstagramPosts = async () => {
           caption: item.caption ? item.caption : null,
           hashtags: item.hashtags ? item.hashtags.join(", ") : null,
           mentions: item.mentions ? item.mentions.join(", ") : null,
-          commentsCount: item.commentsCount ? item.commentsCount : null,
-          likesCount: item.likesCount ? item.likesCount : null,
+          commentsCount: item.commentsCount || item.commentsCount === 0 ? item.commentsCount : null,
+          likesCount: item.likesCount || item.likesCount === 0 ? item.likesCount : null,
           alt: item.alt ? item.alt : null,
           ownerFullName: item.ownerFullName ? item.ownerFullName : null,
           ownerUsername: item.ownerUsername ? item.ownerUsername : null,
