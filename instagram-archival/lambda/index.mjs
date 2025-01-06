@@ -6,8 +6,8 @@ import {
   downloadVideoAsBuffer,
   downloadVideo,
 } from "./util/download_media.mjs";
-// import { readArchivedPost, saveArchivedPost } from "./util/manage_db.mjs";
 import { putToS3, formatTimestamp, fetchInstagramPosts } from "./util/misc.mjs";
+import { getTimes, addTime, getLatestTime } from "./util/manage_db.mjs";
 import log from "./util/logger.mjs";
 dotenv.config();
 
@@ -33,7 +33,6 @@ export const handler = async (event, context, callback) => {
         ? { accessKeyId: accessKeyId, secretAccessKey: secretAccessKey }
         : undefined,
     });
-
     if (!s3Client) {
       log.error("Failed to create S3 client");
       return {
@@ -42,6 +41,11 @@ export const handler = async (event, context, callback) => {
       };
     }
     log.info("S3 client created");
+
+    addTime();
+    log.info("Archival time saved");
+    const times = getTimes();
+    console.log(times);
 
     const postsResponse = await fetchInstagramPosts();
     if (postsResponse.status === "error") {
@@ -78,21 +82,8 @@ export const handler = async (event, context, callback) => {
       const timestampDateFormatted = formatTimestamp({ timestamp });
       const fileName = url + timestampDateFormatted;
       const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const fileExtension = type === "video" ? "mp4" : "pdf";
       const S3Path = `${subFolder}/${sanitizedFileName}`;
       const localPath = `./../documents/${sanitizedFileName}`;
-
-      // log.info("Checking for existing post in database...");
-      // const postCheckResponse = readArchivedPost({ post_id: postId });
-      // if (postCheckResponse.status === "error") {
-      //   log.error("Failed to check for existing post in database");
-      //   continue;
-      // }
-      // if (postCheckResponse.row) {
-      //   log.error("Existing post found in database, skipping post");
-      //   continue;
-      // }
-      // log.info("No existing post found in database, proceeding with archival...");
 
       if (local) {
         log.info("Downloading media locally...");
@@ -170,18 +161,6 @@ export const handler = async (event, context, callback) => {
         }
         log.info("PDF file uploaded to S3");
       }
-
-      // log.info("Saving post to database...");
-      // const savePostResponse = saveArchivedPost({
-      //   url,
-      //   created_timestamp: timestamp,
-      //   post_id: postId,
-      // });
-      // if (savePostResponse.status === "error") {
-      //   log.error("Failed to save post to database");
-      //   continue;
-      // }
-      // log.info("Post saved to database");
     }
     log.info("All Instagram posts archived");
     return {
