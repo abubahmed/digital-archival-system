@@ -415,16 +415,3 @@ export const downloadVideo = async ({ videoUrl, path, post }) => {
     return { status: "error", message: error.message };
   }
 };
-
-const sanitizeText = (text) => {
-  try {
-    if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
-    let stringText = String(text);
-    stringText = stringText.trim().replace(/\s+/g, " ");
-    stringText = stringText.replace(/[^ -~]/g, "");
-    return stringText;
-  } catch (error) {
-    log.error(error);
-    return "";
-  }
-};

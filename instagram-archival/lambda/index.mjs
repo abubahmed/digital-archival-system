@@ -27,6 +27,29 @@ export const handler = async (event, context, callback) => {
   }
 
   try {
+    const latestTimeResponse = getLatestTime();
+    if (latestTimeResponse.status === "error") {
+      log.error("Failed to get latest archival time");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to get latest archival time" }),
+      };
+    }
+    log.info("Latest archival time retrieved");
+    const latestTime = formatTimestamp({ timestamp: latestTimeResponse.time });
+    const latestTimeISO = latestTimeResponse.time;
+    log.info(`Latest archival time: ${latestTime}`);
+
+    const addTimeResponse = addTime();
+    if (addTimeResponse.status === "error") {
+      log.error("Failed to add new archival time");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to add new archival time" }),
+      };
+    }
+    log.info("Archival time added");
+
     const s3Client = new S3Client({
       region: region,
       credentials: local
@@ -42,12 +65,7 @@ export const handler = async (event, context, callback) => {
     }
     log.info("S3 client created");
 
-    addTime();
-    log.info("Archival time saved");
-    const times = getTimes();
-    console.log(times);
-
-    const postsResponse = await fetchInstagramPosts();
+    const postsResponse = await fetchInstagramPosts({ after: latestTimeISO });
     if (postsResponse.status === "error") {
       log.error("Failed to fetch Instagram posts");
       return {
@@ -57,6 +75,7 @@ export const handler = async (event, context, callback) => {
     }
 
     const posts = postsResponse.posts;
+    const postsCount = postsResponse.postsCount;
     if (posts.length === 0) {
       log.error("No Instagram posts fetched");
       return {
@@ -64,9 +83,13 @@ export const handler = async (event, context, callback) => {
         body: JSON.stringify({ message: "No Instagram posts found" }),
       };
     }
-    log.info("Instagram posts fetched");
+    log.info(`${postsCount} Instagram posts fetched`);
+    let processedPosts = 0;
 
     for (const post of posts) {
+      processedPosts++;
+      log.info(`Processing post ${processedPosts}/${postsCount}`);
+
       const { images, videoUrl, type, timestamp, url, postId } = post;
       if ((!images || images.length === 0) && !videoUrl) {
         log.error("Missing image(s) or video URL");

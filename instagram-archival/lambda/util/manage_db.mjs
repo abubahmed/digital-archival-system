@@ -1,6 +1,22 @@
 import Database from "better-sqlite3";
 import log from "./logger.mjs";
 
+/**
+ * Retrieves all stored time entries from the database.
+ *
+ * @returns {Object} An object containing the fetch status, message, and an array of times.
+ *
+ * The function:
+ * - Opens a SQLite database (`times.db`).
+ * - Ensures the `posts` table exists.
+ * - Queries all records from the `times` table.
+ * - Extracts and returns the time values.
+ * - Closes the database connection after execution.
+ *
+ * @example
+ * getTimes();
+ * // Returns: { status: "success", message: "All times retrieved", times: [...] }
+ */
 export const getTimes = () => {
   let db;
   try {
@@ -8,7 +24,7 @@ export const getTimes = () => {
     db.exec(`
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-      time TEXT NOT NULL,
+      time TEXT NOT NULL
     )
     `);
     const rows = db.prepare("SELECT * FROM times").all();
@@ -30,6 +46,23 @@ export const getTimes = () => {
   }
 };
 
+/**
+ * Adds the current timestamp to the database.
+ *
+ * @returns {Object} An object containing the operation status, message, and the saved time.
+ *
+ * The function:
+ * - Opens a SQLite database (`times.db`).
+ * - Ensures the `times` table exists.
+ * - Generates the current timestamp in ISO format.
+ * - Inserts the timestamp into the database.
+ * - Returns the saved time upon success.
+ * - Closes the database connection after execution.
+ *
+ * @example
+ * addTime();
+ * // Returns: { status: "success", message: "Archival time saved", time: "2025-02-03T12:34:56.789Z" }
+ */
 export const addTime = () => {
   let db;
   try {
@@ -37,7 +70,7 @@ export const addTime = () => {
     db.exec(`
     CREATE TABLE IF NOT EXISTS times (
       id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-      time TEXT NOT NULL,
+      time TEXT NOT NULL
     )
   `);
     const time = new Date().toISOString();
@@ -60,6 +93,22 @@ export const addTime = () => {
   }
 };
 
+/**
+ * Retrieves the most recent timestamp from the database.
+ *
+ * @returns {Object} An object containing the operation status, message, and the latest recorded time.
+ *
+ * The function:
+ * - Opens a SQLite database (`times.db`).
+ * - Ensures the `times` table exists.
+ * - Queries the latest timestamp entry, ordered by time in descending order.
+ * - Returns the retrieved time or defaults to the Unix epoch time (`1970-01-01T00:00:00.000Z`) if no entry exists.
+ * - Closes the database connection after execution.
+ *
+ * @example
+ * getLatestTime();
+ * // Returns: { status: "success", message: "Latest time entry retrieved", time: "2025-02-03T14:30:00.123Z" }
+ */
 export const getLatestTime = () => {
   let db;
   try {
@@ -71,7 +120,10 @@ export const getLatestTime = () => {
       )
     `);
     const row = db.prepare("SELECT * FROM times ORDER BY time DESC LIMIT 1").get();
-    const time = row ? row.time : null;
+    let time = row ? row.time : null;
+    if (!time) {
+      time = new Date(0).toISOString();
+    }
     return {
       status: "success",
       message: "Latest time entry retrieved",

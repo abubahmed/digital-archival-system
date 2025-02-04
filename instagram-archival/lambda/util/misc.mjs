@@ -4,6 +4,26 @@ import log from "./logger.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 
+/**
+ * Uploads a file to an Amazon S3 bucket.
+ *
+ * @param {Object} params - The parameter object.
+ * @param {Buffer|Stream|string} params.file - The file content to upload.
+ * @param {Object} params.S3Client - An instance of the AWS S3 client.
+ * @param {string} params.bucketName - The name of the S3 bucket.
+ * @param {string} params.path - The destination path (key) in the S3 bucket.
+ * @returns {Promise<Object>} An object containing the upload status, response, and message.
+ *
+ * The function:
+ * - Validates required parameters.
+ * - Creates an S3 PutObjectCommand to upload the file.
+ * - Sends the command using the provided S3 client.
+ * - Returns the response or an error message.
+ *
+ * @example
+ * putToS3({ file: buffer, S3Client, bucketName: "my-bucket", path: "uploads/file.txt" })
+ * // Returns: { status: "success", message: "File uploaded to S3", response: {...} }
+ */
 export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
   if (!file || !S3Client || !bucketName || !path) {
     log.error("Missing argument(s); cancelled S3 upload");
@@ -37,6 +57,16 @@ export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
   }
 };
 
+/**
+ * Formats a given timestamp into a readable string format.
+ *
+ * @param {Object} params - The parameter object.
+ * @param {number|string} params.timestamp - The timestamp to format.
+ * @returns {string|null} The formatted timestamp as "YYYY-MM-DD_HH-MM-SS", or null if an error occurs.
+ * @example
+ * formatTimestamp({ timestamp: 2025-02-03 17:01:19 });
+ * // Returns: "2025-02-03_17-01-19"
+ */
 export const formatTimestamp = ({ timestamp }) => {
   try {
     const timestampDate = new Date(timestamp);
@@ -54,7 +84,26 @@ export const formatTimestamp = ({ timestamp }) => {
   }
 };
 
-export const fetchInstagramPosts = async () => {
+/**
+ * Fetches Instagram posts from a specified account using Apify Instagram Scraper API.
+ *
+ * @param {Object} params - The parameter object.
+ * @param {string|number} params.after - A timestamp (in milliseconds or date string) used to filter posts newer than two days before this date.
+ * @returns {Promise<Object>} An object containing the fetch status, message, posts array, and post count.
+ *
+ * The function:
+ * - Retrieves an API token from environment variables.
+ * - Initializes an Apify client for scraping Instagram.
+ * - Formats the `after` accordingly and subtracts 48 hours.
+ * - Calls the Apify Instagram scraper to fetch posts.
+ * - Filters and structures the retrieved posts.
+ * - Returns the posts along with status and message.
+ *
+ * @example
+ * fetchInstagramPosts({ after: Date.now() - 7 * 24 * 60 * 60 * 1000 })
+ * // Returns: { status: "success", message: "Instagram posts fetched", posts: [...], postsCount: X }
+ */
+export const fetchInstagramPosts = async ({ after }) => {
   const APIFY_TOKEN = process.env.APIFY_TOKEN;
   if (APIFY_TOKEN === undefined || APIFY_TOKEN === "") {
     log.error("Missing environment variable(s); cancelled Instagram scraping");
@@ -70,29 +119,39 @@ export const fetchInstagramPosts = async () => {
       token: APIFY_TOKEN,
     });
     log.info("Apify client created");
-    const resultLimit = 3;
     const instagramAccount = "dailyprincetonian";
+
+    const date = new Date(after);
+    date.setTime(date.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const dateFormatted = `${year}-${month}-${day}`;
+
     const input = {
       directUrls: [`https://www.instagram.com/${instagramAccount}/`],
       resultsType: "posts",
-      resultsLimit: resultLimit,
       searchType: "hashtag",
       searchLimit: 1,
+      onlyPostsNewerThan: dateFormatted,
+      enhanceUserSearchWithFacebookPage: false,
     };
-
     log.info("Scraping Instagram posts...");
     const run = await client.actor("apify/instagram-scraper").call(input);
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-  
+    console.log(items);
+
     if (!items || items.length === 0) {
       log.error("No Instagram posts found");
       return {
-        status: "status",
+        status: "error",
         message: "No Instagram posts found",
         posts: [],
+        postsCount: 0,
       };
     }
 
+    const postsCount = items.length;
     const posts = [];
     items.forEach((item) => {
       if (
@@ -100,7 +159,8 @@ export const fetchInstagramPosts = async () => {
         item.url &&
         item.timestamp &&
         item.id &&
-        ((item.images && item.images.length > 0) || item.videoUrl)
+        ((item.images && item.images.length > 0) || item.videoUrl) &&
+        new Date(item.timestamp) >= new Date(after)
       ) {
         posts.push({
           timestamp: item.timestamp,
@@ -126,6 +186,7 @@ export const fetchInstagramPosts = async () => {
       status: "success",
       message: "Instagram posts fetched",
       posts,
+      postsCount,
     };
   } catch (error) {
     log.error(error);
@@ -133,6 +194,30 @@ export const fetchInstagramPosts = async () => {
       status: "error",
       message: error.message,
       posts: [],
+      postsCount: 0,
     };
+  }
+};
+
+/**
+ * Sanitizes a given text input by removing unwanted characters and formatting whitespace.
+ *
+ * @param {string} text - The text to be sanitized.
+ * @returns {string} The cleaned and formatted text.
+ *
+ * @example
+ * sanitizeText("  Hello   World! 👋  ");
+ * // Returns: "Hello World!"
+ */
+const sanitizeText = (text) => {
+  try {
+    if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
+    let stringText = String(text);
+    stringText = stringText.trim().replace(/\s+/g, " ");
+    stringText = stringText.replace(/[^ -~]/g, "");
+    return stringText;
+  } catch (error) {
+    log.error(error);
+    return "";
   }
 };
