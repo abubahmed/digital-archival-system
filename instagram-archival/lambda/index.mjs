@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 import {
   downloadImagesAsPdf,
@@ -7,7 +7,7 @@ import {
   downloadVideo,
 } from "./util/download_media.mjs";
 import { putToS3, formatTimestamp, fetchInstagramPosts } from "./util/misc.mjs";
-import { getTimes, addTime, getLatestTime } from "./util/manage_db.mjs";
+import { addTime, getLatestTime } from "./util/manage_db.mjs";
 import log from "./util/logger.mjs";
 dotenv.config();
 
@@ -27,6 +27,7 @@ export const handler = async (event, context, callback) => {
   }
 
   try {
+    // Retrieve the last time the archival process was run from the database
     const latestTimeResponse = getLatestTime();
     if (latestTimeResponse.status === "error") {
       log.error("Failed to get latest archival time");
@@ -40,6 +41,7 @@ export const handler = async (event, context, callback) => {
     const latestTimeISO = latestTimeResponse.time;
     log.info(`Latest archival time: ${latestTime}`);
 
+    // Add the current time as a new time entry to the database
     const addTimeResponse = addTime();
     if (addTimeResponse.status === "error") {
       log.error("Failed to add new archival time");
@@ -50,6 +52,7 @@ export const handler = async (event, context, callback) => {
     }
     log.info("Archival time added");
 
+    // Instantiate the AWS S3 client
     const s3Client = new S3Client({
       region: region,
       credentials: local
@@ -65,8 +68,9 @@ export const handler = async (event, context, callback) => {
     }
     log.info("S3 client created");
 
-    const postsResponse = await fetchInstagramPosts({ after: latestTimeISO });
-    if (postsResponse.status === "error") {
+    // Fetch all Instagram posts posted after the most recent archival time
+    const { status, posts, postsCount } = await fetchInstagramPosts({ after: latestTimeISO });
+    if (status === "error") {
       log.error("Failed to fetch Instagram posts");
       return {
         statusCode: 500,
@@ -74,8 +78,7 @@ export const handler = async (event, context, callback) => {
       };
     }
 
-    const posts = postsResponse.posts;
-    const postsCount = postsResponse.postsCount;
+    // Handle the case where no new posts were found
     if (posts.length === 0) {
       log.error("No Instagram posts fetched");
       return {
@@ -86,10 +89,12 @@ export const handler = async (event, context, callback) => {
     log.info(`${postsCount} Instagram posts fetched`);
     let processedPosts = 0;
 
+    // Iterate through each post and process it
     for (const post of posts) {
       processedPosts++;
       log.info(`Processing post ${processedPosts}/${postsCount}`);
 
+      // Validate the post data, ensuring all required fields are present
       const { images, videoUrl, type, timestamp, url, postId } = post;
       if ((!images || images.length === 0) && !videoUrl) {
         log.error("Missing image(s) or video URL");
@@ -101,6 +106,7 @@ export const handler = async (event, context, callback) => {
       log.info("Post data:");
       log.info(post);
 
+      // Define the S3 path and local path for storing the resultant media
       const subFolder = "instagram";
       const timestampDateFormatted = formatTimestamp({ timestamp });
       const fileName = url + timestampDateFormatted;
@@ -108,6 +114,7 @@ export const handler = async (event, context, callback) => {
       const S3Path = `${subFolder}/${sanitizedFileName}`;
       const localPath = `./../documents/${sanitizedFileName}`;
 
+      // If process is running locally, download the media to a local path, depending on the type of media
       if (local) {
         log.info("Downloading media locally...");
         const mediaDownloadResponse =
@@ -121,6 +128,7 @@ export const handler = async (event, context, callback) => {
         log.info("Media saved locally");
       }
 
+      // Download the media as a buffer(s), depending on the type of media
       log.info("Downloading media as buffer...");
       const mediaBufferResponse =
         type === "video"
@@ -132,6 +140,7 @@ export const handler = async (event, context, callback) => {
       }
       log.info("Media buffer created");
 
+      // Upload the media buffer(s) to S3, depending on the type of media, and check for errors
       log.info("Uploading media to S3...");
       if (type === "video") {
         const videoFileName = "video.mp4";

@@ -4,8 +4,31 @@ import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
 import log from "./logger.mjs";
-import { formatTimestamp } from "./misc.mjs";
+import { addMetadataPage } from "./misc.mjs";
 
+/**
+ * Downloads images and compiles them into a PDF file saved locally, including a metadata page.
+ * 
+ * @param {Object} options - The options for downloading images as a PDF.
+ * @param {string[]} options.imageUrls - Array of image URLs to be added to the PDF.
+ * @param {string} options.path - The file path where the PDF will be saved.
+ * @param {Object} options.post - Metadata of the post associated with the images.
+ * 
+ * @returns {Object} - Status and message of the operation.
+ * 
+ * The function:
+ * - Fetches images from the provided URLs and determines their dimensions.
+ * - Creates a PDF document and adds each image as a separate page.
+ * - Appends a metadata page with details from the `post` object.
+ * - Saves the resulting PDF file locally at the specified `path`.
+ * 
+ * @example
+ * await downloadImagesAsPdf({
+ *   imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
+ *   path: "./downloads/post123",
+ *   post: { postId: "123", url: "https://example.com/post/123" }
+ * });
+ */
 export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
   if (!imageUrls || imageUrls.length === 0 || !path || !post) {
     log.error("Missing argument(s); cancelled local PDF download");
@@ -27,71 +50,8 @@ export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
         .image(imageBuffer, 0, 0, { width: dimensions.width, height: dimensions.height });
     }
 
-    doc.addPage({ size: [816, 1056] });
-    const fontSize = 12;
-    const lineSpacing = 1.15;
-    const lineGap = fontSize * lineSpacing - fontSize;
-    const margin = 96;
-
-    let postText = "";
-    if (post.timestamp) {
-      const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
-      postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
-    }
-    const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
-    postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
-
-    const sanitizedUrl = sanitizeText(post.url);
-    if (sanitizedUrl && sanitizedUrl.length > 0) {
-      postText += `URL: ${sanitizedUrl}\n`;
-    }
-    const sanitizedPostId = sanitizeText(post.postId);
-    if (sanitizedPostId && sanitizedPostId.length > 0) {
-      postText += `Post ID: ${sanitizedPostId}\n`;
-    }
-    const sanitizedShortCode = sanitizeText(post.shortCode);
-    if (sanitizedShortCode && sanitizedShortCode.length > 0) {
-      postText += `Short Code: ${sanitizedShortCode}\n`;
-    }
-    const sanitizedHashtags = sanitizeText(post.hashtags);
-    if (sanitizedHashtags && sanitizedHashtags.length > 0) {
-      postText += `Hashtags: ${sanitizedHashtags}\n`;
-    }
-    const sanitizedMentions = sanitizeText(post.mentions);
-    if (sanitizedMentions && sanitizedMentions.length > 0) {
-      postText += `Mentions: ${sanitizedMentions}\n`;
-    }
-    const sanitizedCommentsCount = sanitizeText(post.commentsCount);
-    if (sanitizedCommentsCount && sanitizedCommentsCount.length > 0) {
-      postText += `Comments Count: ${sanitizedCommentsCount}\n`;
-    }
-    const sanitizedLikesCount = sanitizeText(post.likesCount);
-    if (sanitizedLikesCount && sanitizedLikesCount.length > 0) {
-      postText += `Likes Count: ${sanitizedLikesCount}\n`;
-    }
-    const sanitizedOwnerFullName = sanitizeText(post.ownerFullName);
-    if (sanitizedOwnerFullName && sanitizedOwnerFullName.length > 0) {
-      postText += `Owner Full Name: ${sanitizedOwnerFullName}\n`;
-    }
-    const sanitizedOwnerUsername = sanitizeText(post.ownerUsername);
-    if (sanitizedOwnerUsername && sanitizedOwnerUsername.length > 0) {
-      postText += `Owner Username: ${sanitizedOwnerUsername}\n`;
-    }
-    const sanitizedCaption = sanitizeText(post.caption);
-    if (sanitizedCaption && sanitizedCaption.length > 0) {
-      postText += `Caption: ${sanitizedCaption}\n`;
-    }
-    const sanitizedAlt = sanitizeText(post.alt);
-    if (sanitizedAlt && sanitizedAlt.length > 0) {
-      postText += `Alt Text: ${sanitizedAlt}\n`;
-    }
-
-    doc.fontSize(fontSize);
-    doc.font("./fonts/arial.ttf").text(postText, margin, margin, {
-      lineGap: lineGap,
-    });
+    addMetadataPage({ doc, post })
     doc.end();
-
     await new Promise((resolve, reject) => {
       writeStream.on("finish", resolve);
       writeStream.on("error", reject);
@@ -103,6 +63,27 @@ export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
   }
 };
 
+/**
+ * Downloads images and compiles them into a PDF buffer, including a metadata page.
+ * 
+ * @param {Object} options - The options for downloading images as a PDF buffer.
+ * @param {string[]} options.imageUrls - Array of image URLs to be added to the PDF.
+ * @param {Object} options.post - Metadata of the post associated with the images.
+ * 
+ * @returns {Object} - Status, message, and a buffer containing the PDF data.
+ * 
+ * The function:
+ * - Fetches images from the provided URLs and determines their dimensions.
+ * - Creates a PDF document and adds each image as a separate page.
+ * - Appends a metadata page with details from the `post` object.
+ * - Returns both the PDF as a buffer.
+ * 
+ * @example
+ * const pdfBuffer = await downloadImagesAsPdfBuffer({
+ *   imageUrls: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"],
+ *   post: { postId: "123", url: "https://example.com/post/123" }
+ * });
+ */
 export const downloadImagesAsPdfBuffer = async ({ imageUrls, post }) => {
   if (!imageUrls || imageUrls.length === 0 || !post) {
     log.error("Missing argument(s); cancelled PDF buffer creation");
@@ -125,71 +106,8 @@ export const downloadImagesAsPdfBuffer = async ({ imageUrls, post }) => {
         .image(imageBuffer, 0, 0, { width: dimensions.width, height: dimensions.height });
     }
 
-    doc.addPage({ size: [816, 1056] });
-    const fontSize = 12;
-    const lineSpacing = 1.15;
-    const lineGap = fontSize * lineSpacing - fontSize;
-    const margin = 96;
-
-    let postText = "";
-    if (post.timestamp) {
-      const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
-      postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
-    }
-    const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
-    postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
-    const sanitizedUrl = sanitizeText(post.url);
-    if (sanitizedUrl && sanitizedUrl.length > 0) {
-      postText += `URL: ${sanitizedUrl}\n`;
-    }
-
-    const sanitizedPostId = sanitizeText(post.postId);
-    if (sanitizedPostId && sanitizedPostId.length > 0) {
-      postText += `Post ID: ${sanitizedPostId}\n`;
-    }
-    const sanitizedShortCode = sanitizeText(post.shortCode);
-    if (sanitizedShortCode && sanitizedShortCode.length > 0) {
-      postText += `Short Code: ${sanitizedShortCode}\n`;
-    }
-    const sanitizedHashtags = sanitizeText(post.hashtags);
-    if (sanitizedHashtags && sanitizedHashtags.length > 0) {
-      postText += `Hashtags: ${sanitizedHashtags}\n`;
-    }
-    const sanitizedMentions = sanitizeText(post.mentions);
-    if (sanitizedMentions && sanitizedMentions.length > 0) {
-      postText += `Mentions: ${sanitizedMentions}\n`;
-    }
-    const sanitizedCommentsCount = sanitizeText(post.commentsCount);
-    if (sanitizedCommentsCount && sanitizedCommentsCount.length > 0) {
-      postText += `Comments Count: ${sanitizedCommentsCount}\n`;
-    }
-    const sanitizedLikesCount = sanitizeText(post.likesCount);
-    if (sanitizedLikesCount && sanitizedLikesCount.length > 0) {
-      postText += `Likes Count: ${sanitizedLikesCount}\n`;
-    }
-    const sanitizedOwnerFullName = sanitizeText(post.ownerFullName);
-    if (sanitizedOwnerFullName && sanitizedOwnerFullName.length > 0) {
-      postText += `Owner Full Name: ${sanitizedOwnerFullName}\n`;
-    }
-    const sanitizedOwnerUsername = sanitizeText(post.ownerUsername);
-    if (sanitizedOwnerUsername && sanitizedOwnerUsername.length > 0) {
-      postText += `Owner Username: ${sanitizedOwnerUsername}\n`;
-    }
-    const sanitizedCaption = sanitizeText(post.caption);
-    if (sanitizedCaption && sanitizedCaption.length > 0) {
-      postText += `Caption: ${sanitizedCaption}\n`;
-    }
-    const sanitizedAlt = sanitizeText(post.alt);
-    if (sanitizedAlt && sanitizedAlt.length > 0) {
-      postText += `Alt Text: ${sanitizedAlt}\n`;
-    }
-
-    doc.fontSize(fontSize);
-    doc.font("./fonts/arial.ttf").text(postText, margin, margin, {
-      lineGap: lineGap,
-    });
+    addMetadataPage({ doc, post })
     doc.end();
-
     await new Promise((resolve, reject) => {
       passThrough.on("end", resolve);
       passThrough.on("error", reject);
@@ -202,6 +120,26 @@ export const downloadImagesAsPdfBuffer = async ({ imageUrls, post }) => {
   }
 };
 
+/**
+ * Downloads a video as a buffer and generates a metadata PDF buffer.
+ * 
+ * @param {Object} options - The options for downloading a video buffer.
+ * @param {string} options.videoUrl - The URL of the video to be downloaded.
+ * @param {Object} options.post - Metadata of the post associated with the video.
+ * 
+ * @returns {Object} - Status, message, and buffers containing the video and metadata PDF.
+ * 
+ * The function:
+ * - Downloads the video from the provided URL and stores it in memory as a buffer.
+ * - Generates a metadata PDF file (`metadata.pdf`) using details contained in 'post' object.
+ * - Returns both the video and metadata PDF as buffers.
+ * 
+ * @example
+ * const { videoBuffer, pdfBuffer } = await downloadVideoAsBuffer({
+ *   videoUrl: "https://example.com/video.mp4",
+ *   post: { postId: "123", url: "https://example.com/post/123" }
+ * });
+ */
 export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
   if (!videoUrl) {
     log.error("Missing argument(s); cancelled video buffer creation");
@@ -230,70 +168,7 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
     const pdfChunks = [];
     pdfPassThrough.on("data", (chunk) => pdfChunks.push(chunk));
     doc.pipe(pdfPassThrough);
-
-    doc.addPage({ size: [816, 1056] });
-    const fontSize = 12;
-    const lineSpacing = 1.15;
-    const lineGap = fontSize * lineSpacing - fontSize;
-    const margin = 96;
-
-    let postText = "";
-    if (post.timestamp) {
-      const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
-      postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
-    }
-    const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
-    postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
-    const sanitizedUrl = sanitizeText(post.url);
-    if (sanitizedUrl && sanitizedUrl.length > 0) {
-      postText += `URL: ${sanitizedUrl}\n`;
-    }
-
-    const sanitizedPostId = sanitizeText(post.postId);
-    if (sanitizedPostId && sanitizedPostId.length > 0) {
-      postText += `Post ID: ${sanitizedPostId}\n`;
-    }
-    const sanitizedShortCode = sanitizeText(post.shortCode);
-    if (sanitizedShortCode && sanitizedShortCode.length > 0) {
-      postText += `Short Code: ${sanitizedShortCode}\n`;
-    }
-    const sanitizedHashtags = sanitizeText(post.hashtags);
-    if (sanitizedHashtags && sanitizedHashtags.length > 0) {
-      postText += `Hashtags: ${sanitizedHashtags}\n`;
-    }
-    const sanitizedMentions = sanitizeText(post.mentions);
-    if (sanitizedMentions && sanitizedMentions.length > 0) {
-      postText += `Mentions: ${sanitizedMentions}\n`;
-    }
-    const sanitizedCommentsCount = sanitizeText(post.commentsCount);
-    if (sanitizedCommentsCount && sanitizedCommentsCount.length > 0) {
-      postText += `Comments Count: ${sanitizedCommentsCount}\n`;
-    }
-    const sanitizedLikesCount = sanitizeText(post.likesCount);
-    if (sanitizedLikesCount && sanitizedLikesCount.length > 0) {
-      postText += `Likes Count: ${sanitizedLikesCount}\n`;
-    }
-    const sanitizedOwnerFullName = sanitizeText(post.ownerFullName);
-    if (sanitizedOwnerFullName && sanitizedOwnerFullName.length > 0) {
-      postText += `Owner Full Name: ${sanitizedOwnerFullName}\n`;
-    }
-    const sanitizedOwnerUsername = sanitizeText(post.ownerUsername);
-    if (sanitizedOwnerUsername && sanitizedOwnerUsername.length > 0) {
-      postText += `Owner Username: ${sanitizedOwnerUsername}\n`;
-    }
-    const sanitizedCaption = sanitizeText(post.caption);
-    if (sanitizedCaption && sanitizedCaption.length > 0) {
-      postText += `Caption: ${sanitizedCaption}\n`;
-    }
-    const sanitizedAlt = sanitizeText(post.alt);
-    if (sanitizedAlt && sanitizedAlt.length > 0) {
-      postText += `Alt Text: ${sanitizedAlt}\n`;
-    }
-
-    doc.fontSize(fontSize);
-    doc.font("./fonts/arial.ttf").text(postText, margin, margin, {
-      lineGap: lineGap,
-    });
+    addMetadataPage({ doc, post })
     doc.end();
 
     await new Promise((resolve, reject) => {
@@ -301,7 +176,7 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
       pdfPassThrough.on("error", reject);
     });
     const pdfBuffer = Buffer.concat(pdfChunks);
-    
+
     return { status: "success", videoBuffer, pdfBuffer, message: "Video buffer created" };
   } catch (error) {
     log.error(error);
@@ -309,6 +184,28 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
   }
 };
 
+/**
+ * Downloads a video and saves it locally along with a metadata PDF.
+ * 
+ * @param {Object} options - The options for downloading a video.
+ * @param {string} options.videoUrl - The URL of the video to be downloaded.
+ * @param {string} options.path - The directory path where the video and PDF will be saved.
+ * @param {Object} options.post - Metadata of the post associated with the video.
+ * 
+ * @returns {Object} - Status and message of the operation.
+ * 
+ * The function:
+ * - Downloads the video from the provided URL and saves it as `video.mp4`.
+ * - Generates a metadata PDF file (`metadata.pdf`) using details contained in 'post' object.
+ * - Saves both the video and metadata PDF to the specified `path`.
+ * 
+ * @example
+ * await downloadVideo({
+ *   videoUrl: "https://example.com/video.mp4",
+ *   path: "./downloads/post123",
+ *   post: { postId: "123", url: "https://example.com/post/123" }
+ * });
+ */
 export const downloadVideo = async ({ videoUrl, path, post }) => {
   if (!videoUrl || !path) {
     log.error("Missing argument(s); cancelled local video download");
@@ -338,70 +235,7 @@ export const downloadVideo = async ({ videoUrl, path, post }) => {
     const doc = new PDFDocument({ autoFirstPage: false });
     const writeStream = fs.createWriteStream(pdfPath);
     doc.pipe(writeStream);
-
-    doc.addPage({ size: [816, 1056] });
-    const fontSize = 12;
-    const lineSpacing = 1.15;
-    const lineGap = fontSize * lineSpacing - fontSize;
-    const margin = 96;
-
-    let postText = "";
-    if (post.timestamp) {
-      const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
-      postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
-    }
-    const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
-    postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
-
-    const sanitizedUrl = sanitizeText(post.url);
-    if (sanitizedUrl && sanitizedUrl.length > 0) {
-      postText += `URL: ${sanitizedUrl}\n`;
-    }
-    const sanitizedPostId = sanitizeText(post.postId);
-    if (sanitizedPostId && sanitizedPostId.length > 0) {
-      postText += `Post ID: ${sanitizedPostId}\n`;
-    }
-    const sanitizedShortCode = sanitizeText(post.shortCode);
-    if (sanitizedShortCode && sanitizedShortCode.length > 0) {
-      postText += `Short Code: ${sanitizedShortCode}\n`;
-    }
-    const sanitizedHashtags = sanitizeText(post.hashtags);
-    if (sanitizedHashtags && sanitizedHashtags.length > 0) {
-      postText += `Hashtags: ${sanitizedHashtags}\n`;
-    }
-    const sanitizedMentions = sanitizeText(post.mentions);
-    if (sanitizedMentions && sanitizedMentions.length > 0) {
-      postText += `Mentions: ${sanitizedMentions}\n`;
-    }
-    const sanitizedCommentsCount = sanitizeText(post.commentsCount);
-    if (sanitizedCommentsCount && sanitizedCommentsCount.length > 0) {
-      postText += `Comments Count: ${sanitizedCommentsCount}\n`;
-    }
-    const sanitizedLikesCount = sanitizeText(post.likesCount);
-    if (sanitizedLikesCount && sanitizedLikesCount.length > 0) {
-      postText += `Likes Count: ${sanitizedLikesCount}\n`;
-    }
-    const sanitizedOwnerFullName = sanitizeText(post.ownerFullName);
-    if (sanitizedOwnerFullName && sanitizedOwnerFullName.length > 0) {
-      postText += `Owner Full Name: ${sanitizedOwnerFullName}\n`;
-    }
-    const sanitizedOwnerUsername = sanitizeText(post.ownerUsername);
-    if (sanitizedOwnerUsername && sanitizedOwnerUsername.length > 0) {
-      postText += `Owner Username: ${sanitizedOwnerUsername}\n`;
-    }
-    const sanitizedCaption = sanitizeText(post.caption);
-    if (sanitizedCaption && sanitizedCaption.length > 0) {
-      postText += `Caption: ${sanitizedCaption}\n`;
-    }
-    const sanitizedAlt = sanitizeText(post.alt);
-    if (sanitizedAlt && sanitizedAlt.length > 0) {
-      postText += `Alt Text: ${sanitizedAlt}\n`;
-    }
-
-    doc.fontSize(fontSize);
-    doc.font("./fonts/arial.ttf").text(postText, margin, margin, {
-      lineGap: lineGap,
-    });
+    addMetadataPage({ doc, post })
     doc.end();
 
     await new Promise((resolve, reject) => {

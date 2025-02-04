@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { ApifyClient } from "apify-client";
 import log from "./logger.mjs";
 import dotenv from "dotenv";
@@ -120,6 +120,7 @@ export const fetchInstagramPosts = async ({ after }) => {
     });
     log.info("Apify client created");
     const instagramAccount = "dailyprincetonian";
+    const resultsLimit = 10;
 
     const date = new Date(after);
     date.setTime(date.getTime() - 2 * 24 * 60 * 60 * 1000);
@@ -135,6 +136,7 @@ export const fetchInstagramPosts = async ({ after }) => {
       searchLimit: 1,
       onlyPostsNewerThan: dateFormatted,
       enhanceUserSearchWithFacebookPage: false,
+      resultsLimit,
     };
     log.info("Scraping Instagram posts...");
     const run = await client.actor("apify/instagram-scraper").call(input);
@@ -209,7 +211,7 @@ export const fetchInstagramPosts = async ({ after }) => {
  * sanitizeText("  Hello   World! 👋  ");
  * // Returns: "Hello World!"
  */
-const sanitizeText = (text) => {
+export const sanitizeText = (text) => {
   try {
     if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
     let stringText = String(text);
@@ -220,4 +222,91 @@ const sanitizeText = (text) => {
     log.error(error);
     return "";
   }
+};
+
+/**
+ * Adds a metadata page to a PDF document.
+ *
+ * @param {Object} options - The input parameters.
+ * @param {Object} options.doc - The PDF document instance.
+ * @param {Object} options.post - The post data containing metadata.
+ * @returns {Object} An object indicating the operation status and message.
+ *
+ * @example
+ * addMetadataPage({ doc, post });
+ * // Returns: { status: "success", message: "Metadata page added" }
+ */
+export const addMetadataPage = ({ doc, post }) => {
+  if (!doc || !post) {
+    log.error("Missing argument(s); cancelled metadata page creation");
+    return { status: "error", message: "Missing argument(s)" };
+  }
+
+  doc.addPage({ size: [816, 1056] });
+  const fontSize = 12;
+  const lineSpacing = 1.15;
+  const lineGap = fontSize * lineSpacing - fontSize;
+  const margin = 96;
+
+  let postText = "";
+  if (post.timestamp) {
+    const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
+    postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
+  }
+  const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
+  postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
+
+  const sanitizedUrl = sanitizeText(post.url);
+  if (sanitizedUrl && sanitizedUrl.length > 0) {
+    postText += `URL: ${sanitizedUrl}\n`;
+  }
+  const sanitizedPostId = sanitizeText(post.postId);
+  if (sanitizedPostId && sanitizedPostId.length > 0) {
+    postText += `Post ID: ${sanitizedPostId}\n`;
+  }
+  const sanitizedShortCode = sanitizeText(post.shortCode);
+  if (sanitizedShortCode && sanitizedShortCode.length > 0) {
+    postText += `Short Code: ${sanitizedShortCode}\n`;
+  }
+  const sanitizedHashtags = sanitizeText(post.hashtags);
+  if (sanitizedHashtags && sanitizedHashtags.length > 0) {
+    postText += `Hashtags: ${sanitizedHashtags}\n`;
+  }
+  const sanitizedMentions = sanitizeText(post.mentions);
+  if (sanitizedMentions && sanitizedMentions.length > 0) {
+    postText += `Mentions: ${sanitizedMentions}\n`;
+  }
+  const sanitizedCommentsCount = sanitizeText(post.commentsCount);
+  if (sanitizedCommentsCount && sanitizedCommentsCount.length > 0) {
+    postText += `Comments Count: ${sanitizedCommentsCount}\n`;
+  }
+  const sanitizedLikesCount = sanitizeText(post.likesCount);
+  if (sanitizedLikesCount && sanitizedLikesCount.length > 0) {
+    postText += `Likes Count: ${sanitizedLikesCount}\n`;
+  }
+  const sanitizedOwnerFullName = sanitizeText(post.ownerFullName);
+  if (sanitizedOwnerFullName && sanitizedOwnerFullName.length > 0) {
+    postText += `Owner Full Name: ${sanitizedOwnerFullName}\n`;
+  }
+  const sanitizedOwnerUsername = sanitizeText(post.ownerUsername);
+  if (sanitizedOwnerUsername && sanitizedOwnerUsername.length > 0) {
+    postText += `Owner Username: ${sanitizedOwnerUsername}\n`;
+  }
+  const sanitizedCaption = sanitizeText(post.caption);
+  if (sanitizedCaption && sanitizedCaption.length > 0) {
+    postText += `Caption: ${sanitizedCaption}\n`;
+  }
+  const sanitizedAlt = sanitizeText(post.alt);
+  if (sanitizedAlt && sanitizedAlt.length > 0) {
+    postText += `Alt Text: ${sanitizedAlt}\n`;
+  }
+
+  doc.fontSize(fontSize);
+  doc.font("./fonts/arial.ttf").text(postText, margin, margin, {
+    lineGap: lineGap,
+  });
+  return {
+    status: "success",
+    message: "Metadata page added",
+  };
 };
