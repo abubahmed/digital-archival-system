@@ -80,7 +80,56 @@ export const formatTimestamp = ({ timestamp }) => {
     return timestampDateFormatted;
   } catch (error) {
     log.error(error);
-    return null;
+    return "";
+  }
+};
+
+const beautifyTimestamp = ({ timestamp }) => {
+  const beautifiedTimestamp = new String(timestamp)
+    .replace(/_/g, " ")
+    .replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/, (match, p1, p2, p3, p4, p5, p6) => {
+      const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const hour = parseInt(p4);
+      const suffix = hour >= 12 ? "PM" : "AM";
+      const formattedTime = `${p4}:${p5}:${p6} ${suffix}`;
+      return `${months[parseInt(p2) - 1]} ${p3}, ${p1} at ${formattedTime}`;
+    });
+  return beautifiedTimestamp;
+};
+
+/**
+ * Sanitizes a given text input by removing unwanted characters and formatting whitespace.
+ *
+ * @param {string} text - The text to be sanitized.
+ * @returns {string} The cleaned and formatted text.
+ *
+ * @example
+ * sanitizeText("  Hello   World! 👋  ");
+ * // Returns: "Hello World!"
+ */
+export const sanitizeText = (text) => {
+  try {
+    if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
+    let stringText = String(text);
+    stringText = stringText.trim().replace(/\s+/g, " ");
+    stringText = stringText.replace(/[^ -~]/g, "");
+    return stringText;
+  } catch (error) {
+    log.error(error);
+    return "";
   }
 };
 
@@ -106,11 +155,11 @@ export const formatTimestamp = ({ timestamp }) => {
 export const fetchInstagramPosts = async ({ after }) => {
   try {
     const client = new ApifyClient({
-      token: APIFY_TOKEN,
+      token: process.env.APIFY_TOKEN,
     });
     log.info("Apify client created");
     const instagramAccount = "dailyprincetonian";
-    const resultsLimit = 10;
+    const resultsLimit = 5;
 
     const date = new Date(after);
     date.setTime(date.getTime() - 2 * 24 * 60 * 60 * 1000);
@@ -191,29 +240,6 @@ export const fetchInstagramPosts = async ({ after }) => {
 };
 
 /**
- * Sanitizes a given text input by removing unwanted characters and formatting whitespace.
- *
- * @param {string} text - The text to be sanitized.
- * @returns {string} The cleaned and formatted text.
- *
- * @example
- * sanitizeText("  Hello   World! 👋  ");
- * // Returns: "Hello World!"
- */
-export const sanitizeText = (text) => {
-  try {
-    if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
-    let stringText = String(text);
-    stringText = stringText.trim().replace(/\s+/g, " ");
-    stringText = stringText.replace(/[^ -~]/g, "");
-    return stringText;
-  } catch (error) {
-    log.error(error);
-    return "";
-  }
-};
-
-/**
  * Adds a metadata page to a PDF document.
  *
  * @param {Object} options - The input parameters.
@@ -239,11 +265,13 @@ export const addMetadataPage = ({ doc, post }) => {
 
   let postText = "";
   if (post.timestamp) {
-    const postTimestampDateFormatted = formatTimestamp({ timestamp: post.timestamp });
-    postText += `Created Timestamp: ${postTimestampDateFormatted}\n`;
+    const formattedTimestamp = formatTimestamp({ timestamp: post.timestamp });
+    const beautifiedTimestamp = beautifyTimestamp({ timestamp: formattedTimestamp });
+    postText += `Created Timestamp: ${beautifiedTimestamp}\n`;
   }
-  const archivalTimestampDateFormatted = formatTimestamp({ timestamp: Date.now() });
-  postText += `Archival Timestamp: ${archivalTimestampDateFormatted}\n`;
+  const formattedTimestamp = formatTimestamp({ timestamp: Date.now() });
+  const beautifiedTimestamp = beautifyTimestamp({ timestamp: formattedTimestamp });
+  postText += `Archival Timestamp: ${beautifiedTimestamp}\n`;
 
   const sanitizedUrl = sanitizeText(post.url);
   if (sanitizedUrl && sanitizedUrl.length > 0) {

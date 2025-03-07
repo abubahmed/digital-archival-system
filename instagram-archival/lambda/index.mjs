@@ -21,14 +21,7 @@ const s3Client = new S3Client({
       }
     : undefined,
 });
-if (!s3Client) {
-  log.error("Failed to create S3 client");
-  return {
-    statusCode: 500,
-    body: JSON.stringify({ message: "Failed to create S3 client" }),
-  };
-}
-log.info("S3 client created");
+log.info("AWS S3 client instantiated");
 
 export const handler = async (event, context, callback) => {
   const bucketName = process.env.AWS_BUCKET_NAME;
@@ -44,7 +37,6 @@ export const handler = async (event, context, callback) => {
         body: JSON.stringify({ message: "Failed to get latest archival time" }),
       };
     }
-    const latestTime = formatTimestamp({ timestamp: latestTimeResponse.time });
     const latestTimeISO = latestTimeResponse.time;
 
     // Add the current time as a new time entry to the database
@@ -94,7 +86,7 @@ export const handler = async (event, context, callback) => {
       }
 
       // Define the S3 path and local path for storing the resultant media
-      const fileName = url + formatTimestamp({ timestamp });;
+      const fileName = url + formatTimestamp({ timestamp });
       const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
       const S3Path = `instagram/${sanitizedFileName}`;
       const localPath = `./../documents/${sanitizedFileName}`;
@@ -109,7 +101,6 @@ export const handler = async (event, context, callback) => {
           log.error("Failed to download media locally, skipping post");
           continue;
         }
-        log.info("Media downloaded locally");
       }
 
       // Download the media as a buffer(s), depending on the type of media
@@ -121,8 +112,8 @@ export const handler = async (event, context, callback) => {
         log.error("Failed to download media as buffer, skipping post");
         continue;
       }
-      log.info("Media buffer created");
 
+      continue;
       // Upload the media buffer(s) to S3, depending on the type of media, and check for errors
       if (type === "video") {
         const videoPath = `${S3Path}/video.mp4`;
@@ -140,7 +131,6 @@ export const handler = async (event, context, callback) => {
           log.error("Failed to upload video to S3, skipping post");
           continue;
         }
-        log.info("Video file uploaded to S3");
 
         const pdfPath = `${S3Path}/metadata.pdf`;
         const S3PdfResponse = await putToS3({
@@ -157,7 +147,6 @@ export const handler = async (event, context, callback) => {
           log.error("Failed to upload metadata to S3, skipping post");
           continue;
         }
-        log.info("Video metadata uploaded to S3");
       } else {
         const pdfPath = `${S3Path}.pdf`;
         const S3Response = await putToS3({
@@ -171,9 +160,9 @@ export const handler = async (event, context, callback) => {
           log.error("Failed to upload to S3, skipping post");
           continue;
         }
-        log.info("PDF file uploaded to S3");
       }
     }
+    log.info(`Instagram archival process complete, ${processedPosts} posts processed`);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Instagram archival process complete" }),
