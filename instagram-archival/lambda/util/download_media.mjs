@@ -34,7 +34,6 @@ export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
     log.error("Missing argument(s); cancelled local PDF download");
     return { status: "error", message: "Missing argument(s)" };
   }
-
   try {
     const pdfPath = path + ".pdf";
     const doc = new PDFDocument({ autoFirstPage: false });
@@ -89,7 +88,6 @@ export const downloadImagesAsPdfBuffer = async ({ imageUrls, post }) => {
     log.error("Missing argument(s); cancelled PDF buffer creation");
     return { status: "error", message: "Missing argument(s)" };
   }
-
   try {
     const doc = new PDFDocument({ autoFirstPage: false });
     const passThrough = new PassThrough();
@@ -145,7 +143,6 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
     log.error("Missing argument(s); cancelled video buffer creation");
     return { status: "error", message: "Missing argument(s)" };
   }
-
   try {
     const response = await axios({
       method: "get",
@@ -176,7 +173,6 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
       pdfPassThrough.on("error", reject);
     });
     const pdfBuffer = Buffer.concat(pdfChunks);
-
     return { status: "success", videoBuffer, pdfBuffer, message: "Video buffer created" };
   } catch (error) {
     log.error(error);
@@ -237,7 +233,6 @@ export const downloadVideo = async ({ videoUrl, path, post }) => {
     doc.pipe(writeStream);
     addMetadataPage({ doc, post })
     doc.end();
-
     await new Promise((resolve, reject) => {
       writeStream.on("finish", resolve);
       writeStream.on("error", reject);

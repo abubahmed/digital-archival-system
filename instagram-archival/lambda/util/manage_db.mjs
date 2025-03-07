@@ -8,10 +8,8 @@ import log from "./logger.mjs";
  *
  * The function:
  * - Opens a SQLite database (`times.db`).
- * - Ensures the `posts` table exists.
  * - Queries all records from the `times` table.
  * - Extracts and returns the time values.
- * - Closes the database connection after execution.
  *
  * @example
  * getTimes();
@@ -53,11 +51,9 @@ export const getTimes = () => {
  *
  * The function:
  * - Opens a SQLite database (`times.db`).
- * - Ensures the `times` table exists.
  * - Generates the current timestamp in ISO format.
  * - Inserts the timestamp into the database.
  * - Returns the saved time upon success.
- * - Closes the database connection after execution.
  *
  * @example
  * addTime();
@@ -100,10 +96,8 @@ export const addTime = () => {
  *
  * The function:
  * - Opens a SQLite database (`times.db`).
- * - Ensures the `times` table exists.
  * - Queries the latest timestamp entry, ordered by time in descending order.
  * - Returns the retrieved time or defaults to the Unix epoch time (`1970-01-01T00:00:00.000Z`) if no entry exists.
- * - Closes the database connection after execution.
  *
  * @example
  * getLatestTime();

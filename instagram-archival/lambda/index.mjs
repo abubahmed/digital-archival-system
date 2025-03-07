@@ -26,7 +26,7 @@ log.info("AWS S3 client instantiated");
 export const handler = async (event, context, callback) => {
   const bucketName = process.env.AWS_BUCKET_NAME;
   const local = process.env.LOCAL;
-
+  
   try {
     // Retrieve the last time the archival process was run from the database
     const latestTimeResponse = getLatestTime();
@@ -38,9 +38,7 @@ export const handler = async (event, context, callback) => {
       };
     }
     const latestTimeISO = latestTimeResponse.time;
-
-    // Add the current time as a new time entry to the database
-    const addTimeResponse = addTime();
+    const addTimeResponse = addTime(); // Add the current time as a new time entry to the database
     if (addTimeResponse.status === "error") {
       log.error("Failed to add new archival time");
       return {
@@ -58,8 +56,6 @@ export const handler = async (event, context, callback) => {
         body: JSON.stringify({ message: "Failed to fetch Instagram posts" }),
       };
     }
-
-    // Handle the case where no new posts were found
     if (posts.length === 0) {
       log.error("No Instagram posts fetched");
       return {
@@ -74,8 +70,6 @@ export const handler = async (event, context, callback) => {
     for (const post of posts) {
       processedPosts++;
       log.info(`Processing post ${processedPosts}/${postsCount}`);
-
-      // Validate the post data, ensuring all required fields are present
       const { images, videoUrl, type, timestamp, url, postId } = post;
       if ((!images || images.length === 0) && !videoUrl) {
         log.error("Missing image(s) or video URL");
@@ -113,7 +107,6 @@ export const handler = async (event, context, callback) => {
         continue;
       }
 
-      continue;
       // Upload the media buffer(s) to S3, depending on the type of media, and check for errors
       if (type === "video") {
         const videoPath = `${S3Path}/video.mp4`;
@@ -123,7 +116,6 @@ export const handler = async (event, context, callback) => {
           bucketName,
           path: videoPath,
         });
-
         if (
           S3VideoResponse.status === "error" ||
           S3VideoResponse.response.$metadata.httpStatusCode != 200
@@ -139,7 +131,6 @@ export const handler = async (event, context, callback) => {
           bucketName,
           path: pdfPath,
         });
-
         if (
           S3PdfResponse.status === "error" ||
           S3PdfResponse.response.$metadata.httpStatusCode != 200
@@ -155,7 +146,6 @@ export const handler = async (event, context, callback) => {
           bucketName,
           path: pdfPath,
         });
-
         if (S3Response.status === "error" || S3Response.response.$metadata.httpStatusCode != 200) {
           log.error("Failed to upload to S3, skipping post");
           continue;

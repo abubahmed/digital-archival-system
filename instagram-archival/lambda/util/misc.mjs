@@ -57,16 +57,6 @@ export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
   }
 };
 
-/**
- * Formats a given timestamp into a readable string format.
- *
- * @param {Object} params - The parameter object.
- * @param {number|string} params.timestamp - The timestamp to format.
- * @returns {string|null} The formatted timestamp as "YYYY-MM-DD_HH-MM-SS", or null if an error occurs.
- * @example
- * formatTimestamp({ timestamp: 2025-02-03 17:01:19 });
- * // Returns: "2025-02-03_17-01-19"
- */
 export const formatTimestamp = ({ timestamp }) => {
   try {
     const timestampDate = new Date(timestamp);
@@ -110,16 +100,6 @@ const beautifyTimestamp = ({ timestamp }) => {
   return beautifiedTimestamp;
 };
 
-/**
- * Sanitizes a given text input by removing unwanted characters and formatting whitespace.
- *
- * @param {string} text - The text to be sanitized.
- * @returns {string} The cleaned and formatted text.
- *
- * @example
- * sanitizeText("  Hello   World! 👋  ");
- * // Returns: "Hello World!"
- */
 export const sanitizeText = (text) => {
   try {
     if (text === undefined || text === null || text === "" || String(text).length === 0) return "";
