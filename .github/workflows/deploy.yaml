@@ -36,8 +36,8 @@ jobs:
           cd instagram-archival
           rm -rf layer/nodejs && mkdir -p layer/nodejs
       - run: |
-          cp ./lambda/package.json layer/nodejs/
-          cp ./lambda/package-lock.json layer/nodejs/
+          cp instagram-archival/lambda/package.json layer/nodejs/
+          cp instagram-archival/lambda/package-lock.json layer/nodejs/
       - run: |
           cd ./layer/nodejs
           npm install
