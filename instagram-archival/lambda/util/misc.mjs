@@ -104,16 +104,6 @@ export const formatTimestamp = ({ timestamp }) => {
  * // Returns: { status: "success", message: "Instagram posts fetched", posts: [...], postsCount: X }
  */
 export const fetchInstagramPosts = async ({ after }) => {
-  const APIFY_TOKEN = process.env.APIFY_TOKEN;
-  if (APIFY_TOKEN === undefined || APIFY_TOKEN === "") {
-    log.error("Missing environment variable(s); cancelled Instagram scraping");
-    return {
-      status: "error",
-      message: "Missing environment variable(s)",
-      posts: [],
-    };
-  }
-
   try {
     const client = new ApifyClient({
       token: APIFY_TOKEN,
@@ -141,7 +131,6 @@ export const fetchInstagramPosts = async ({ after }) => {
     log.info("Scraping Instagram posts...");
     const run = await client.actor("apify/instagram-scraper").call(input);
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    console.log(items);
 
     if (!items || items.length === 0) {
       log.error("No Instagram posts found");

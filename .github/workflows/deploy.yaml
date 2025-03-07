@@ -20,3 +20,36 @@ jobs:
           cd instagram-archival/lambda
           zip -r ../../instagram-archival.zip .
       - run: aws lambda update-function-code --function-name=instagram-archival --zip-file=fileb://instagram-archival.zip
+  instagram-archival-layer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+      - run: |
+          cd instagram-archival
+          rm -rf layer/nodejs && mkdir -p layer/nodejs
+      - run: |
+          cp -r lambda/node_modules layer/nodejs/
+          cp lambda/package.json layer/nodejs/
+          cp lambda/package-lock.json layer/nodejs/
+      - run: |
+          cd layer
+          zip -r instagram-archival-layer.zip nodejs
+      - run: |
+          LAYER_VERSION=$(aws lambda publish-layer-version \
+            --layer-name instagram-archival-layer \
+            --zip-file fileb://instagram-archival/layer/instagram-archival-layer.zip \
+            --compatible-runtimes nodejs16.x \
+            --query Version --output text)
+          echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
+      - run: |
+          aws lambda update-function-configuration \
+            --function-name instagram-archival \
+            --layers arn:aws:lambda:us-east-1:${{ secrets.AWS_ACCOUNT_ID }}:layer:instagram-archival-layer:${{ env.LAYER_VERSION }}

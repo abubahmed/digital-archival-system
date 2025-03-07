@@ -11,20 +11,28 @@ import { addTime, getLatestTime } from "./util/manage_db.mjs";
 import log from "./util/logger.mjs";
 dotenv.config();
 
+// Instantiate the AWS S3 client
+const s3Client = new S3Client({
+  region: process.env.AWS_BUCKET_REGION,
+  credentials: process.env.LOCAL
+    ? {
+        accessKeyId: process.env.AWS_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_SECRET_KEY,
+      }
+    : undefined,
+});
+if (!s3Client) {
+  log.error("Failed to create S3 client");
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message: "Failed to create S3 client" }),
+  };
+}
+log.info("S3 client created");
+
 export const handler = async (event, context, callback) => {
-  console.log(event);
-  console.log(context);
-
   const bucketName = process.env.AWS_BUCKET_NAME;
-  const region = process.env.AWS_BUCKET_REGION;
-  const accessKeyId = process.env.AWS_ACCESS_KEY;
-  const secretAccessKey = process.env.AWS_SECRET_KEY;
   const local = process.env.LOCAL;
-
-  if (!bucketName || !region || (local && (!accessKeyId || !secretAccessKey))) {
-    log.error("Missing environment variable(s)");
-    return;
-  }
 
   try {
     // Retrieve the last time the archival process was run from the database
@@ -36,10 +44,8 @@ export const handler = async (event, context, callback) => {
         body: JSON.stringify({ message: "Failed to get latest archival time" }),
       };
     }
-    log.info("Latest archival time retrieved");
     const latestTime = formatTimestamp({ timestamp: latestTimeResponse.time });
     const latestTimeISO = latestTimeResponse.time;
-    log.info(`Latest archival time: ${latestTime}`);
 
     // Add the current time as a new time entry to the database
     const addTimeResponse = addTime();
@@ -50,23 +56,6 @@ export const handler = async (event, context, callback) => {
         body: JSON.stringify({ message: "Failed to add new archival time" }),
       };
     }
-    log.info("Archival time added");
-
-    // Instantiate the AWS S3 client
-    const s3Client = new S3Client({
-      region: region,
-      credentials: local
-        ? { accessKeyId: accessKeyId, secretAccessKey: secretAccessKey }
-        : undefined,
-    });
-    if (!s3Client) {
-      log.error("Failed to create S3 client");
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ message: "Failed to create S3 client" }),
-      };
-    }
-    log.info("S3 client created");
 
     // Fetch all Instagram posts posted after the most recent archival time
     const { status, posts, postsCount } = await fetchInstagramPosts({ after: latestTimeISO });
@@ -87,9 +76,9 @@ export const handler = async (event, context, callback) => {
       };
     }
     log.info(`${postsCount} Instagram posts fetched`);
-    let processedPosts = 0;
 
     // Iterate through each post and process it
+    let processedPosts = 0;
     for (const post of posts) {
       processedPosts++;
       log.info(`Processing post ${processedPosts}/${postsCount}`);
@@ -103,20 +92,15 @@ export const handler = async (event, context, callback) => {
         log.error("Missing post metadata");
         continue;
       }
-      log.info("Post data:");
-      log.info(post);
 
       // Define the S3 path and local path for storing the resultant media
-      const subFolder = "instagram";
-      const timestampDateFormatted = formatTimestamp({ timestamp });
-      const fileName = url + timestampDateFormatted;
+      const fileName = url + formatTimestamp({ timestamp });;
       const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const S3Path = `${subFolder}/${sanitizedFileName}`;
+      const S3Path = `instagram/${sanitizedFileName}`;
       const localPath = `./../documents/${sanitizedFileName}`;
 
       // If process is running locally, download the media to a local path, depending on the type of media
       if (local) {
-        log.info("Downloading media locally...");
         const mediaDownloadResponse =
           type === "video"
             ? await downloadVideo({ videoUrl, path: localPath, post: post })
@@ -125,11 +109,10 @@ export const handler = async (event, context, callback) => {
           log.error("Failed to download media locally, skipping post");
           continue;
         }
-        log.info("Media saved locally");
+        log.info("Media downloaded locally");
       }
 
       // Download the media as a buffer(s), depending on the type of media
-      log.info("Downloading media as buffer...");
       const mediaBufferResponse =
         type === "video"
           ? await downloadVideoAsBuffer({ videoUrl, post: post })
@@ -141,10 +124,8 @@ export const handler = async (event, context, callback) => {
       log.info("Media buffer created");
 
       // Upload the media buffer(s) to S3, depending on the type of media, and check for errors
-      log.info("Uploading media to S3...");
       if (type === "video") {
-        const videoFileName = "video.mp4";
-        const videoPath = `${S3Path}/${videoFileName}`;
+        const videoPath = `${S3Path}/video.mp4`;
         const S3VideoResponse = await putToS3({
           file: mediaBufferResponse.videoBuffer,
           S3Client: s3Client,
@@ -161,8 +142,7 @@ export const handler = async (event, context, callback) => {
         }
         log.info("Video file uploaded to S3");
 
-        const pdfFileName = "metadata.pdf";
-        const pdfPath = `${S3Path}/${pdfFileName}`;
+        const pdfPath = `${S3Path}/metadata.pdf`;
         const S3PdfResponse = await putToS3({
           file: mediaBufferResponse.pdfBuffer,
           S3Client: s3Client,
@@ -194,7 +174,6 @@ export const handler = async (event, context, callback) => {
         log.info("PDF file uploaded to S3");
       }
     }
-    log.info("All Instagram posts archived");
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Instagram archival process complete" }),
