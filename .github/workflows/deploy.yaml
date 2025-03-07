@@ -36,17 +36,17 @@ jobs:
           cd instagram-archival
           rm -rf layer/nodejs && mkdir -p layer/nodejs
       - run: |
-          cp lambda/package.json layer/nodejs/
-          cp lambda/package-lock.json layer/nodejs/
+          cp ./lambda/package.json layer/nodejs/
+          cp ./lambda/package-lock.json layer/nodejs/
       - run: |
-          cd layer/nodejs
+          cd ./layer/nodejs
           npm install
           cd ..
-          zip -r instagram-archival-layer.zip nodejs
+          zip -r ../../instagram-archival-layer.zip ./nodejs
       - run: |
           LAYER_VERSION=$(aws lambda publish-layer-version \
             --layer-name instagram-archival-layer \
-            --zip-file fileb://instagram-archival/layer/instagram-archival-layer.zip \
+            --zip-file fileb://instagram-archival-layer.zip \
             --compatible-runtimes nodejs16.x \
             --query Version --output text)
           echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
