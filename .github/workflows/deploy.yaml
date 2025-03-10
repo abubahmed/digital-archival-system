@@ -17,8 +17,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-east-1
       - run: |
-          cd instagram-archival/lambda
-          zip -r ../../instagram-archival.zip .
+          cd lambda
+          zip -r ../instagram-archival.zip .
       - run: aws lambda update-function-code --function-name=instagram-archival --zip-file=fileb://instagram-archival.zip
   instagram-archival-layer:
     runs-on: ubuntu-latest
@@ -33,17 +33,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-east-1
       - run: |
-          cd instagram-archival
-          rm -rf layer/nodejs && mkdir -p layer/nodejs
-      - run: |
-          cd instagram-archival
+          mkdir -p layer/nodejs
           cp lambda/package.json layer/nodejs/
           cp lambda/package-lock.json layer/nodejs/
       - run: |
-          cd instagram-archival/layer/nodejs
+          cd layer/nodejs
           npm install
           cd ..
-          zip -r ../../instagram-archival-layer.zip nodejs
+          zip -r ../instagram-archival-layer.zip nodejs
       - run: |
           LAYER_VERSION=$(aws lambda publish-layer-version \
             --layer-name instagram-archival-layer \
