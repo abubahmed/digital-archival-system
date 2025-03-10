@@ -1,6 +1,6 @@
-import dotenv from "dotenv";
 import { instagramHandler } from "./handlers/instagram.mjs";
 import { dailyPrinceHandler } from "./handlers/daily_prince.mjs";
+import dotenv from "dotenv";
 dotenv.config();
 
 export const handler = async (event, context, callback) => {

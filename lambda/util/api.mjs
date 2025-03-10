@@ -1,6 +1,6 @@
 import { ApifyClient } from "apify-client";
 import log from "./logger.mjs";
-import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./utils";
+import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./helper.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -29,8 +29,7 @@ export const getArticlesFromMonth = async ({ month, year }) => {
   }
 };
 
-export const captureArticle = async ({ url, browser }) => {
-  const local = process.env.LOCAL;
+export const captureArticle = async ({ url, browser, header, footer }) => {
   function delay(time) {
     return new Promise(function (resolve) {
       setTimeout(resolve, time);
@@ -38,7 +37,7 @@ export const captureArticle = async ({ url, browser }) => {
   }
   let page;
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
     const domain = new URL(url).host;
     const cookies = [
       {
@@ -56,6 +55,13 @@ export const captureArticle = async ({ url, browser }) => {
       timeout: 120000,
       waitUntil: ["networkidle2", "domcontentloaded"],
     });
+    await page.evaluate((header, footer) => {
+      let targetElements = "related"
+      if (!header) targetElements += ", header, .promo-bar";
+      if (!footer) targetElements += ", footer";
+      const targetItems = document.querySelectorAll(targetElements);
+      targetItems.forEach((item) => item.remove());
+    }, header, footer);
 
     await page.addStyleTag({
       content: `
@@ -82,10 +88,7 @@ export const captureArticle = async ({ url, browser }) => {
       width: "8.5in",
       height: "11in",
       displayHeaderFooter: true,
-      margin: { top: "1in", bottom: "1in" },
     };
-
-    if (local) pdfOptions.path = `./../../documents/${fileName}`;
     const pdfBuffer = await page.pdf(pdfOptions);
     return { status: "success", message: "Article captured", file: pdfBuffer, name: fileName };
   } catch (error) {

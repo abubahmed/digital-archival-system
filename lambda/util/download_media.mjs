@@ -4,7 +4,7 @@ import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
 import log from "./logger.mjs";
-import { addMetadataPage } from "./helper.mjs";
+import { addMetadataPage } from "./api.mjs";
 
 export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
   try {

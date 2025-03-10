@@ -1,5 +1,9 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PDFDocument } from "pdf-lib";
+import fs from "fs";
+import crypto from "crypto";
 import dotenv from "dotenv";
+import log from "./logger.mjs";
 dotenv.config();
 
 export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
@@ -86,4 +90,16 @@ export const sanitizeText = (text) => {
     log.error(error);
     return "";
   }
+};
+
+export const mergePDFBuffers = async ({ buffers, name }) => {
+  const mergedPdf = await PDFDocument.create();
+  for (const buffer of buffers) {
+    const pdf = await PDFDocument.load(buffer);
+    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+    copiedPages.forEach((page) => mergedPdf.addPage(page));
+  }
+  const mergedPdfBytes = await mergedPdf.save();
+  fs.writeFileSync(`./../documents/${name}`, mergedPdfBytes);
+  return mergedPdfBytes;
 };
