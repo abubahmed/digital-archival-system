@@ -1,39 +1,26 @@
-export const generateAltoFile = (pageText, pageId) => {
+import { PDFExtract } from "pdf.js-extract";
+import fs from "fs";
+import log from "./logger.mjs";
+import xml2js from "xml2js";
+
+export const generateAltoFile = ({ pageText, pageId }) => {
   const builder = new xml2js.Builder();
   const altoObject = {
     "alto:alto": {
       $: {
-        xmlns: "http://www.loc.gov/standards/alto/ns-v4#",
+        "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
       },
-      "alto:layout": {
+      "alto:Layout": {
         "alto:Page": [
           {
             $: {
-              ID: `page_${pageId}`,
-              PHYSICAL_IMG_NR: pageId.toString(),
-              HEIGHT: "1050",
-              WIDTH: "800",
+              ID: `${pageId}`,
             },
             "alto:TextBlock": [
               {
-                $: {
-                  ID: `tb_${pageId}`,
-                  HPOS: "100",
-                  VPOS: "100",
-                  HEIGHT: "200",
-                  WIDTH: "600",
-                },
-                "alto:textLine": [
+                "alto:String": [
                   {
-                    $: {
-                      HPOS: "100",
-                      VPOS: "100",
-                      HEIGHT: "20",
-                      WIDTH: "500",
-                    },
-                    "alto:String": {
-                      _: pageText,
-                    },
+                    _: pageText,
                   },
                 ],
               },
@@ -43,5 +30,34 @@ export const generateAltoFile = (pageText, pageId) => {
       },
     },
   };
-  return builder.buildObject(altoObject);
+
+  const altoXML = builder.buildObject(altoObject);
+  const altoPath = `./../../documents/page_${pageId}.xml`;
+  fs.writeFileSync(altoPath, altoXML);
+  return {
+    status: "success",
+    message: "ALTO file created",
+    altoBuffer: altoXML,
+    name: `page_${pageId}.xml`,
+  };
+};
+
+export const extractText = async ({ buffer }) => {
+  const pdfExtract = new PDFExtract();
+  const options = {};
+  try {
+    const data = await pdfExtract.extractBuffer(buffer, options);
+    const pages = [];
+    for (const page of data.pages) {
+      const text = page.content.map((content) => content.str).join(" ");
+      pages.push({
+        text: text,
+        number: page.pageInfo.num,
+      });
+    }
+    return pages;
+  } catch (error) {
+    log.error(error);
+    return [];
+  }
 };
