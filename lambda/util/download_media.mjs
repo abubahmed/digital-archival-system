@@ -4,7 +4,7 @@ import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
 import log from "./logger.mjs";
-import { addMetadataPage } from "./misc.mjs";
+import { addMetadataPage } from "./helper.mjs";
 
 export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
   try {
@@ -22,7 +22,7 @@ export const downloadImagesAsPdf = async ({ imageUrls, path, post }) => {
         .image(imageBuffer, 0, 0, { width: dimensions.width, height: dimensions.height });
     }
 
-    addMetadataPage({ doc, post })
+    addMetadataPage({ doc, post });
     doc.end();
     await new Promise((resolve, reject) => {
       writeStream.on("finish", resolve);
@@ -52,7 +52,7 @@ export const downloadImagesAsPdfBuffer = async ({ imageUrls, post }) => {
         .image(imageBuffer, 0, 0, { width: dimensions.width, height: dimensions.height });
     }
 
-    addMetadataPage({ doc, post })
+    addMetadataPage({ doc, post });
     doc.end();
     await new Promise((resolve, reject) => {
       passThrough.on("end", resolve);
@@ -89,7 +89,7 @@ export const downloadVideoAsBuffer = async ({ videoUrl, post }) => {
     const pdfChunks = [];
     pdfPassThrough.on("data", (chunk) => pdfChunks.push(chunk));
     doc.pipe(pdfPassThrough);
-    addMetadataPage({ doc, post })
+    addMetadataPage({ doc, post });
     doc.end();
 
     await new Promise((resolve, reject) => {
@@ -128,7 +128,7 @@ export const downloadVideo = async ({ videoUrl, path, post }) => {
     const doc = new PDFDocument({ autoFirstPage: false });
     const writeStream = fs.createWriteStream(pdfPath);
     doc.pipe(writeStream);
-    addMetadataPage({ doc, post })
+    addMetadataPage({ doc, post });
     doc.end();
     await new Promise((resolve, reject) => {
       writeStream.on("finish", resolve);

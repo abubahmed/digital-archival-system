@@ -6,12 +6,13 @@ import {
   downloadVideoAsBuffer,
   downloadVideo,
 } from "../util/download_media.mjs";
-import { putToS3, formatTimestamp, fetchInstagramPosts } from "../util/misc.mjs";
+import { putToS3, formatTimestamp } from "../util/helper.mjs";
 import { addTime, getLatestTime } from "../util/manage_db.mjs";
+import { fetchInstagramPosts } from "../util/api.mjs";
 import log from "../util/logger.mjs";
 dotenv.config();
 
-export const instagramHandler = async () => {
+export const instagramHandler = async ({ event, context, callback }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
 

@@ -1,92 +1,98 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { ApifyClient } from "apify-client";
 import log from "./logger.mjs";
+import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./utils";
 import dotenv from "dotenv";
 dotenv.config();
 
-export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
+export const getArticlesFromMonth = async ({ month, year }) => {
   try {
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: path,
-      Body: file,
-    });
-    const response = await S3Client.send(command);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const formattedMonth = String(month).padStart(2, "0");
+    const formattedYear = String(year);
+    const formattedDate = String(yesterday.getDate()).padStart(2, "0");
+    const url = `https://www.dailyprincetonian.com/search.json?a=1&s=&ti=&ts_month=${formattedMonth}&ts_day=${formattedDate}&ts_year=${formattedYear}&te_month=${formattedMonth}&te_day=${formattedDate}&te_year=${formattedYear}&au=&tg=&ty=article`;
+    const response = await fetch(url);
+    const data = await response.json();
     return {
       status: "success",
-      message: "File uploaded to S3",
-      response,
+      message: "Articles fetched",
+      items: data.items,
     };
   } catch (error) {
-    log.error(error);
+    console.error("Error fetching articles:", error);
     return {
       status: "error",
       message: error.message,
-      response: null,
+      items: [],
     };
   }
 };
 
-export const formatTimestamp = (timestamp) => {
-  try {
-    const timestampDate = new Date(timestamp);
-    const year = timestampDate.getFullYear();
-    const month = String(timestampDate.getMonth() + 1).padStart(2, "0");
-    const day = String(timestampDate.getDate()).padStart(2, "0");
-    const hours = String(timestampDate.getHours()).padStart(2, "0");
-    const minutes = String(timestampDate.getMinutes()).padStart(2, "0");
-    const seconds = String(timestampDate.getSeconds()).padStart(2, "0");
-    const timestampDateFormatted = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
-    return timestampDateFormatted;
-  } catch (error) {
-    log.error(error);
-    return "";
+export const captureArticle = async ({ url, browser }) => {
+  const local = process.env.LOCAL;
+  function delay(time) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, time);
+    });
   }
-};
-
-const beautifyTimestamp = (timestamp) => {
+  let page;
   try {
-    const beautifiedTimestamp = new String(timestamp)
-      .replace(/_/g, " ")
-      .replace(
-        /(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/,
-        (match, p1, p2, p3, p4, p5, p6) => {
-          const months = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-          ];
-          const hour = parseInt(p4);
-          const suffix = hour >= 12 ? "PM" : "AM";
-          const formattedTime = `${p4}:${p5}:${p6} ${suffix}`;
-          return `${months[parseInt(p2) - 1]} ${p3}, ${p1} at ${formattedTime}`;
+    const page = await browser.newPage();
+    const domain = new URL(url).host;
+    const cookies = [
+      {
+        name: "max-age",
+        value: `${60 * 60 * 24 * 2}`,
+        url: url,
+        domain: domain,
+        path: "/",
+        expires: new Date().getTime(),
+        "max-age": 60 * 60 * 24 * 2,
+      },
+    ];
+    await page.setCookie(...cookies);
+    await page.goto(url, {
+      timeout: 120000,
+      waitUntil: ["networkidle2", "domcontentloaded"],
+    });
+
+    await page.addStyleTag({
+      content: `
+        @page {
+          margin: 1in 0 1in 0;
         }
-      );
-    return beautifiedTimestamp;
-  } catch (error) {
-    log.error(error);
-    return "";
-  }
-};
+        @page :first {
+          margin-top: 0.5in;
+          margin-bottom: 1in;
+        }
+      `,
+    });
+    const iframes = await page.$$("iframe");
+    const iframePromises = iframes.map(async (iframeElement) => {
+      await iframeElement.contentFrame();
+    });
+    await Promise.all(iframePromises);
+    delay(1000);
 
-export const sanitizeText = (text) => {
-  try {
-    let stringText = String(text);
-    stringText = stringText.trim().replace(/\s+/g, " ");
-    stringText = stringText.replace(/[^ -~]/g, "");
-    return stringText;
+    const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const formattedTimestamp = formatTimestamp(new Date());
+    const fileName = `${sanitizedWebUrl}_${formattedTimestamp}.pdf`;
+    const pdfOptions = {
+      width: "8.5in",
+      height: "11in",
+      displayHeaderFooter: true,
+      margin: { top: "1in", bottom: "1in" },
+    };
+
+    if (local) pdfOptions.path = `./../../documents/${fileName}`;
+    const pdfBuffer = await page.pdf(pdfOptions);
+    return { status: "success", message: "Article captured", file: pdfBuffer, name: fileName };
   } catch (error) {
     log.error(error);
-    return "";
+    return { status: "error", message: error.message, file: null, name: null };
+  } finally {
+    await page?.close();
   }
 };
 
@@ -175,7 +181,6 @@ export const addMetadataPage = ({ doc, post }) => {
     return sanitizedValue && sanitizedValue.length > 0 ? `${label}: ${sanitizedValue}\n` : "";
   };
   doc.addPage({ size: [816, 1056] });
-
   let postText = "";
   const postTimestamp = beautifyTimestamp(formatTimestamp(post.timestamp));
   const archivedTimestamp = beautifyTimestamp(formatTimestamp(new Date()));

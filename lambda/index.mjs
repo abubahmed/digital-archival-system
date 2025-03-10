@@ -1,12 +1,15 @@
 import dotenv from "dotenv";
 import { instagramHandler } from "./handlers/instagram.mjs";
+import { dailyPrinceHandler } from "./handlers/daily_prince.mjs";
 dotenv.config();
 
 export const handler = async (event, context, callback) => {
-  console.log(event)
-  console.log(context)
+  console.log(event);
+  console.log(context);
 
-  if (process.env.ARCHIVE_TYPE === "INSTAGRAM") await instagramHandler();
+  const archiveType = process.env.ARCHIVE_TYPE;
+  if (archiveType === "instagram") await instagramHandler({ event, context, callback });
+  if (archiveType === "dailyprince") await dailyPrinceHandler({ event, context, callback });
 
   return {
     statusCode: 200,
