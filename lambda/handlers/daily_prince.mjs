@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { S3Client } from "@aws-sdk/client-s3";
 import { captureArticle } from "../util/api.mjs";
 import { mergePDFBuffers } from "../util/helper.mjs";
+import { generateAltoFile } from "../util/mets_alto.mjs";
 import log from "../util/logger.mjs";
 import puppeteer from "puppeteer";
 dotenv.config();
@@ -29,24 +30,21 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   });
   log.info("Puppeteer client instantiated");
 
-  const pdfBuffers = [];
+  const articlesData = [];
   for (const [index, url] of event.webUrls.entries()) {
-    const { status, file, name, message } = await captureArticle({
+    const response = await captureArticle({
       url: url,
       browser: browser,
       header: index === 0,
       footer: index === event.webUrls.length - 1,
     });
-    if (status === "error") {
+    if (response.status === "error") {
       log.error(`Failed to capture article: ${message}`);
       continue;
     }
-    pdfBuffers.push({
-      file: file,
-      name: name,
-    });
+    articlesData.push(response);
   }
-  if (pdfBuffers.length === 0) {
+  if (articlesData.length === 0) {
     log.info("No articles captured");
     return {
       status: "error",
@@ -55,9 +53,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   }
 
   const mergedPdfBuffer = await mergePDFBuffers({
-    buffers: pdfBuffers.map(({ file }) => file),
-    name: pdfBuffers[0].name,
+    buffers: articlesData.map(({ file }) => file),
+    name: articlesData[0].name,
   });
-  console.log(mergedPdfBuffer);
   browser.close();
 };

@@ -55,13 +55,22 @@ export const captureArticle = async ({ url, browser, header, footer }) => {
       timeout: 120000,
       waitUntil: ["networkidle2", "domcontentloaded"],
     });
-    await page.evaluate((header, footer) => {
-      let targetElements = "related"
-      if (!header) targetElements += ", header, .promo-bar";
-      if (!footer) targetElements += ", footer";
-      const targetItems = document.querySelectorAll(targetElements);
-      targetItems.forEach((item) => item.remove());
-    }, header, footer);
+    await page.evaluate(
+      (header, footer) => {
+        let targetElements = "related";
+        if (!header) targetElements += ", header, .promo-bar";
+        if (!footer) targetElements += ", footer";
+        const targetItems = document.querySelectorAll(targetElements);
+        targetItems.forEach((item) => item.remove());
+      },
+      header,
+      footer
+    );
+
+    const articleTitle = await page.evaluate(() => {
+      const h1Element = document.querySelector(".article h1");
+      return h1Element ? h1Element.textContent : null;
+    });
 
     await page.addStyleTag({
       content: `
@@ -90,10 +99,17 @@ export const captureArticle = async ({ url, browser, header, footer }) => {
       displayHeaderFooter: true,
     };
     const pdfBuffer = await page.pdf(pdfOptions);
-    return { status: "success", message: "Article captured", file: pdfBuffer, name: fileName };
+    return {
+      status: "success",
+      message: "Article captured",
+      pdfBuffer: pdfBuffer,
+      fileName: fileName,
+      title: articleTitle,
+      url: url,
+    };
   } catch (error) {
     log.error(error);
-    return { status: "error", message: error.message, file: null, name: null };
+    return { status: "error", message: error.message };
   } finally {
     await page?.close();
   }
