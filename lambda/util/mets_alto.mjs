@@ -2,8 +2,9 @@ import { PDFExtract } from "pdf.js-extract";
 import fs from "fs";
 import log from "./logger.mjs";
 import xml2js from "xml2js";
+import { formatTimestamp } from "./helper.mjs";
 
-export const generateAltoFile = ({ pageText, pageId }) => {
+export const generateAltoFile = ({ pageText, pageId, dir }) => {
   const builder = new xml2js.Builder();
   const altoObject = {
     "alto:alto": {
@@ -32,8 +33,9 @@ export const generateAltoFile = ({ pageText, pageId }) => {
   };
 
   const altoXML = builder.buildObject(altoObject);
-  const altoPath = `./../documents/page_${pageId}.xml`;
-  fs.writeFileSync(altoPath, altoXML);
+  const path = `./../documents/${dir}/`;
+  fs.mkdirSync(path, { recursive: true });
+  fs.writeFileSync(path + `page_${pageId}.alto.xml`, altoXML);
   return {
     status: "success",
     message: "ALTO file created",
@@ -42,56 +44,120 @@ export const generateAltoFile = ({ pageText, pageId }) => {
   };
 };
 
-export const generateMetsFile = ({ articles }) => {
-  const builder = new xml2js.Builder();
-  const metsObject = {
+export const generateMetsFile = ({ articlesData, dir }) => {
+  const metsXmlObject = {
     "mets:mets": {
       $: {
-        xmlns: "http://www.loc.gov/METS/",
+        "xmlns:mets": "http://www.loc.gov/METS/",
+        "xmlns:xlink": "http://www.w3.org/1999/xlink",
+        "xmlns:mods": "http://www.loc.gov/mods/v3",
         "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
+        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "xsi:schemaLocation": "http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd",
       },
-      "mets:structure": {
-        "mets:div": articles.map((article, index) => ({
-          $: { TYPE: "article" },
-          "mets:fptr": article.pages.map((page) => ({
-            $: {
-              FILEID: `alto_${article.title.replace(/ /g, "_")}_page_${page}`,
-            },
-          })),
-        })),
+      "mets:metsHdr": {
+        $: {
+          CREATEDATE: new Date().toISOString(),
+        },
+        "mets:agent": {
+          $: {
+            ROLE: "CREATOR",
+            TYPE: "ORGANIZATION",
+          },
+          "mets:name": "Automated Articles Issue Archiver",
+        },
       },
       "mets:fileSec": {
-        "mets:fileGrp": {
-          $: { USE: "alto" },
-          "mets:file": articles.flatMap((article, index) =>
-            article.pages.map((page, pageIndex) => ({
+        "mets:fileGrp": [
+          {
+            $: {
+              USE: "PDF",
+            },
+            "mets:file": {
               $: {
-                ID: `alto_${article.title.replace(/ /g, "_")}_page_${page}`,
-                MIMETYPE: "application/xml",
+                ID: "full_pdf",
+                MIMETYPE: "application/pdf",
               },
               "mets:FLocat": {
                 $: {
-                  "xlink:type": "simple",
-                  "xlink:href": `https://example.com/alto_files/alto_${article.title.replace(
-                    / /g,
-                    "_"
-                  )}_page_${page}.xml`,
+                  "xlink:href": "dailyprince-issue_" + formatTimestamp(new Date()) + ".pdf",
                 },
               },
-            }))
-          ),
+            },
+          },
+          {
+            $: {
+              USE: "ALTO",
+            },
+            "mets:file": articlesData.flatMap((article) => {
+              const files = [];
+              for (const page of article.pages) {
+                files.push({
+                  $: {
+                    ID: `alto_${page}`,
+                    MIMETYPE: "text/xml",
+                  },
+                  "mets:FLocat": {
+                    $: {
+                      LOCTYPE: "URL",
+                      "xlink:href": `page_${page}.alto.xml`,
+                    },
+                  },
+                });
+              }
+              return files;
+            }),
+          },
+        ],
+      },
+      "mets:structMap": {
+        $: {
+          TYPE: "logical",
         },
+        "mets:div": articlesData.map((article, idx) => {
+          const articleDiv = {
+            $: {
+              TYPE: "article",
+              LABEL: article.title,
+              DMDID: `dmd${idx + 1}`,
+            },
+            "mets:mptr": {
+              $: {
+                "xlink:href": article.url,
+              },
+            },
+            "mets:div": [],
+          };
+
+          for (const page of article.pages) {
+            articleDiv["mets:div"].push({
+              $: {
+                TYPE: "page",
+                LABEL: `Page ${page}`,
+                FILEID: `alto_${page}`,
+              },
+              "mets:fptr": {
+                $: {
+                  FILEID: `alto_${page}`,
+                },
+              },
+            });
+          }
+          return articleDiv;
+        }),
       },
     },
   };
-  const metsXML = builder.buildObject(metsObject);
-  const metsPath = `./../documents/mets_page.xml`;
-  fs.writeFileSync(metsPath, metsXML);
+
+  const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  ", newline: "\n" } });
+  const xmlString = builder.buildObject(metsXmlObject);
+  const path = `./../documents/${dir}/`;
+  fs.mkdirSync(path, { recursive: true });
+  fs.writeFileSync(path + "mets.xml", xmlString);
   return {
     status: "success",
-    message: "ALTO file created",
-    metsBuffer: metsXML,
-    name: `mets_page.xml`,
+    message: "METS file created",
+    metsBuffer: xmlString,
   };
 };
 

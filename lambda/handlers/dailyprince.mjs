@@ -3,6 +3,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { captureArticle } from "../util/api.mjs";
 import { mergePDFBuffers } from "../util/helper.mjs";
 import { generateAltoFile, extractText, generateMetsFile } from "../util/mets_alto.mjs";
+import { formatTimestamp } from "../util/helper.mjs";
 import log from "../util/logger.mjs";
 import puppeteer from "puppeteer";
 dotenv.config();
@@ -56,15 +57,18 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     };
   }
 
+  const issueName = `dailyprincetonian_${formatTimestamp(new Date())}`;
+  const pdfBuffers = articlesData.map((article) => article.pdfBuffer);
   const mergedPDFBuffer = await mergePDFBuffers({
-    buffers: articlesData.map(({ pdfBuffer }) => pdfBuffer),
-    name: articlesData[0].fileName,
+    buffers: pdfBuffers,
+    dir: issueName,
   });
 
   const pages = await extractText({ buffer: mergedPDFBuffer });
   const altoBuffers = [];
   for (const page of pages) {
     const { status, message, altoBuffer, name } = generateAltoFile({
+      dir: issueName,
       pageText: page.text,
       pageId: page.number,
     });
@@ -75,13 +79,10 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
         message: `Failed to generate ALTO file: ${message}`,
       };
     }
-    altoBuffers.push({
-      buffer: altoBuffer,
-      name: name,
-    });
+    altoBuffers.push({ buffer: altoBuffer, name: name });
   }
 
-  const metsResponse = generateMetsFile({ articles: articlesData, altoBuffers: altoBuffers });
+  const metsResponse = generateMetsFile({ articlesData, altoBuffers: altoBuffers, dir: issueName });
   if (metsResponse.status === "error") {
     log.error(`Failed to generate METS file: ${metsResponse.message}`);
     return {

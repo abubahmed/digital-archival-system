@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mets:mets xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:alto="http://www.loc.gov/standards/alto/ns-v4#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd">
+  <mets:metsHdr CREATEDATE="2025-03-11T04:15:32.684Z">
+    <mets:agent ROLE="CREATOR" TYPE="ORGANIZATION">
+      <mets:name>Automated Articles Issue Archiver</mets:name>
+    </mets:agent>
+  </mets:metsHdr>
+  <mets:fileSec>
+    <mets:fileGrp USE="PDF">
+      <mets:file ID="full_pdf" MIMETYPE="application/pdf">
+        <mets:FLocat xlink:href="dailyprince-issue_2025-03-11_00-15-32.pdf"/>
+      </mets:file>
+    </mets:fileGrp>
+    <mets:fileGrp USE="ALTO">
+      <mets:file ID="alto_1" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_1.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_2" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_2.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_3" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_3.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_4" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_4.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_5" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_5.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_6" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_6.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_7" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_7.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_8" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_8.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_9" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_9.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_10" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_10.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_11" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_11.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_12" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_12.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_13" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_13.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_14" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_14.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_15" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_15.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_16" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_16.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_17" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_17.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_18" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="page_18.alto.xml"/>
+      </mets:file>
+    </mets:fileGrp>
+  </mets:fileSec>
+  <mets:structMap TYPE="logical">
+    <mets:div TYPE="article" LABEL="Artist Q&amp;A: Maddie Feldman’s DJ dreams as Disc Rocky" DMDID="dmd1">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/article/2024/10/princeton-prospect-artist-question-and-answer-disc-rocky-dj"/>
+      <mets:div TYPE="page" LABEL="Page 1" FILEID="alto_1">
+        <mets:fptr FILEID="alto_1"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 2" FILEID="alto_2">
+        <mets:fptr FILEID="alto_2"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 3" FILEID="alto_3">
+        <mets:fptr FILEID="alto_3"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="SPIA strengthens its commitment to providing students with public service careers" DMDID="dmd2">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/article/2024/10/princeton-news-stlife-spia-commitment-public-service-opportunities"/>
+      <mets:div TYPE="page" LABEL="Page 4" FILEID="alto_4">
+        <mets:fptr FILEID="alto_4"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 5" FILEID="alto_5">
+        <mets:fptr FILEID="alto_5"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 6" FILEID="alto_6">
+        <mets:fptr FILEID="alto_6"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="Women’s soccer downs Dartmouth 4–0 on senior day" DMDID="dmd3">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/article/2024/10/princeton-sports-recaps-womens-soccer-tigers-beat-dartmouth-big-green-senior-day"/>
+      <mets:div TYPE="page" LABEL="Page 7" FILEID="alto_7">
+        <mets:fptr FILEID="alto_7"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 8" FILEID="alto_8">
+        <mets:fptr FILEID="alto_8"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 9" FILEID="alto_9">
+        <mets:fptr FILEID="alto_9"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="The Data Blog: 2028 Frosh Survey" DMDID="dmd4">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/article/2024/10/princeton-data-blog-frosh-survey-2028-results-analysis-chart-crosstab-longitudinal"/>
+      <mets:div TYPE="page" LABEL="Page 10" FILEID="alto_10">
+        <mets:fptr FILEID="alto_10"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 11" FILEID="alto_11">
+        <mets:fptr FILEID="alto_11"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 12" FILEID="alto_12">
+        <mets:fptr FILEID="alto_12"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 13" FILEID="alto_13">
+        <mets:fptr FILEID="alto_13"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 14" FILEID="alto_14">
+        <mets:fptr FILEID="alto_14"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 15" FILEID="alto_15">
+        <mets:fptr FILEID="alto_15"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 16" FILEID="alto_16">
+        <mets:fptr FILEID="alto_16"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 17" FILEID="alto_17">
+        <mets:fptr FILEID="alto_17"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 18" FILEID="alto_18">
+        <mets:fptr FILEID="alto_18"/>
+      </mets:div>
+    </mets:div>
+  </mets:structMap>
+</mets:mets>

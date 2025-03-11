@@ -1,5 +1,5 @@
 import { instagramHandler } from "./handlers/instagram.mjs";
-import { dailyPrinceHandler } from "./handlers/daily_prince.mjs";
+import { dailyPrinceHandler } from "./handlers/dailyprince.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 

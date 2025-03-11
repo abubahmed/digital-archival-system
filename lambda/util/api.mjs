@@ -99,14 +99,12 @@ export const captureArticle = async ({ url, browser, header, footer, startingPag
       displayHeaderFooter: true,
     };
     const pdfBuffer = await page.pdf(pdfOptions);
-
     const pdfLoaded = await PDFDocument.load(pdfBuffer);
     const pageCount = pdfLoaded.getPageCount();
     const pages = Array.from({ length: pageCount }, (_, i) => startingPage + i);
 
     return {
       status: "success",
-      message: "Article captured",
       pdfBuffer: pdfBuffer,
       fileName: fileName,
       title: articleTitle,

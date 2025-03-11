@@ -92,7 +92,7 @@ export const sanitizeText = (text) => {
   }
 };
 
-export const mergePDFBuffers = async ({ buffers, name }) => {
+export const mergePDFBuffers = async ({ buffers, dir }) => {
   const mergedPdf = await PDFDocument.create();
   for (const buffer of buffers) {
     const pdf = await PDFDocument.load(buffer);
@@ -100,6 +100,8 @@ export const mergePDFBuffers = async ({ buffers, name }) => {
     copiedPages.forEach((page) => mergedPdf.addPage(page));
   }
   const mergedPdfBytes = await mergedPdf.save();
-  fs.writeFileSync(`./../documents/${name}`, mergedPdfBytes);
+  const path = `./../documents/${dir}/`;
+  fs.mkdirSync(path, { recursive: true });
+  fs.writeFileSync(`./../documents/${dir}/${dir}.pdf`, mergedPdfBytes);
   return mergedPdfBytes;
 };
