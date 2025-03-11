@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mets:mets xmlns="http://www.loc.gov/METS/" xmlns:alto="http://www.loc.gov/standards/alto/ns-v4#">
+  <mets:structure>
+    <mets:div TYPE="article">
+      <mets:fptr FILEID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_1" />
+      <mets:fptr FILEID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_2" />
+      <mets:fptr FILEID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_3" />
+    </mets:div>
+    <mets:div TYPE="article">
+      <mets:fptr
+        FILEID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_4" />
+      <mets:fptr
+        FILEID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_5" />
+      <mets:fptr
+        FILEID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_6" />
+    </mets:div>
+    <mets:div TYPE="article">
+      <mets:fptr FILEID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_7" />
+      <mets:fptr FILEID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_8" />
+      <mets:fptr FILEID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_9" />
+    </mets:div>
+    <mets:div TYPE="article">
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_10" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_11" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_12" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_13" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_14" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_15" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_16" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_17" />
+      <mets:fptr FILEID="alto_The_Data_Blog:_2028_Frosh_Survey_page_18" />
+    </mets:div>
+  </mets:structure>
+  <mets:fileSec>
+    <mets:fileGrp USE="alto">
+      <mets:file ID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_1"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_1.xml" />
+      </mets:file>
+      <mets:file ID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_2"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_2.xml" />
+      </mets:file>
+      <mets:file ID="alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_3"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Artist_Q&amp;A:_Maddie_Feldman’s_DJ_dreams_as_Disc_Rocky_page_3.xml" />
+      </mets:file>
+      <mets:file
+        ID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_4"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_4.xml" />
+      </mets:file>
+      <mets:file
+        ID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_5"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_5.xml" />
+      </mets:file>
+      <mets:file
+        ID="alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_6"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_SPIA_strengthens_its_commitment_to_providing_students_with_public_service_careers_page_6.xml" />
+      </mets:file>
+      <mets:file ID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_7"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_7.xml" />
+      </mets:file>
+      <mets:file ID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_8"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_8.xml" />
+      </mets:file>
+      <mets:file ID="alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_9"
+        MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_Women’s_soccer_downs_Dartmouth_4–0_on_senior_day_page_9.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_10" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_10.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_11" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_11.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_12" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_12.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_13" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_13.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_14" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_14.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_15" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_15.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_16" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_16.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_17" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_17.xml" />
+      </mets:file>
+      <mets:file ID="alto_The_Data_Blog:_2028_Frosh_Survey_page_18" MIMETYPE="application/xml">
+        <mets:FLocat xlink:type="simple"
+          xlink:href="https://example.com/alto_files/alto_The_Data_Blog:_2028_Frosh_Survey_page_18.xml" />
+      </mets:file>
+    </mets:fileGrp>
+  </mets:fileSec>
+</mets:mets>

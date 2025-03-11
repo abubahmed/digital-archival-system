@@ -1,6 +1,7 @@
 import { ApifyClient } from "apify-client";
 import log from "./logger.mjs";
 import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./helper.mjs";
+import { PDFDocument } from "pdf-lib";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -29,7 +30,7 @@ export const getArticlesFromMonth = async ({ month, year }) => {
   }
 };
 
-export const captureArticle = async ({ url, browser, header, footer }) => {
+export const captureArticle = async ({ url, browser, header, footer, startingPage }) => {
   function delay(time) {
     return new Promise(function (resolve) {
       setTimeout(resolve, time);
@@ -66,7 +67,6 @@ export const captureArticle = async ({ url, browser, header, footer }) => {
       header,
       footer
     );
-
     const articleTitle = await page.evaluate(() => {
       const h1Element = document.querySelector(".article h1");
       return h1Element ? h1Element.textContent : null;
@@ -99,6 +99,11 @@ export const captureArticle = async ({ url, browser, header, footer }) => {
       displayHeaderFooter: true,
     };
     const pdfBuffer = await page.pdf(pdfOptions);
+
+    const pdfLoaded = await PDFDocument.load(pdfBuffer);
+    const pageCount = pdfLoaded.getPageCount();
+    const pages = Array.from({ length: pageCount }, (_, i) => startingPage + i);
+
     return {
       status: "success",
       message: "Article captured",
@@ -106,6 +111,7 @@ export const captureArticle = async ({ url, browser, header, footer }) => {
       fileName: fileName,
       title: articleTitle,
       url: url,
+      pages: pages,
     };
   } catch (error) {
     log.error(error);

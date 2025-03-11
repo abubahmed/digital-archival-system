@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { S3Client } from "@aws-sdk/client-s3";
 import { captureArticle } from "../util/api.mjs";
 import { mergePDFBuffers } from "../util/helper.mjs";
-import { generateAltoFile } from "../util/mets_alto.mjs";
+import { generateAltoFile, extractText, generateMetsFile } from "../util/mets_alto.mjs";
 import log from "../util/logger.mjs";
 import puppeteer from "puppeteer";
 dotenv.config();
@@ -30,6 +30,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   });
   log.info("Puppeteer client instantiated");
 
+  let startingPage = 1;
   const articlesData = [];
   for (const [index, url] of event.webUrls.entries()) {
     const response = await captureArticle({
@@ -37,13 +38,16 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       browser: browser,
       header: index === 0,
       footer: index === event.webUrls.length - 1,
+      startingPage: startingPage,
     });
     if (response.status === "error") {
       log.error(`Failed to capture article: ${message}`);
       continue;
     }
     articlesData.push(response);
+    startingPage += response.pages.length;
   }
+  browser.close();
   if (articlesData.length === 0) {
     log.info("No articles captured");
     return {
@@ -52,9 +56,38 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     };
   }
 
-  const mergedPdfBuffer = await mergePDFBuffers({
-    buffers: articlesData.map(({ file }) => file),
-    name: articlesData[0].name,
+  const mergedPDFBuffer = await mergePDFBuffers({
+    buffers: articlesData.map(({ pdfBuffer }) => pdfBuffer),
+    name: articlesData[0].fileName,
   });
-  browser.close();
+
+  const pages = await extractText({ buffer: mergedPDFBuffer });
+  const altoBuffers = [];
+  for (const page of pages) {
+    const { status, message, altoBuffer, name } = generateAltoFile({
+      pageText: page.text,
+      pageId: page.number,
+    });
+    if (status === "error") {
+      log.error(`Failed to generate ALTO file: ${message}`);
+      return {
+        status: "error",
+        message: `Failed to generate ALTO file: ${message}`,
+      };
+    }
+    altoBuffers.push({
+      buffer: altoBuffer,
+      name: name,
+    });
+  }
+
+  const metsResponse = generateMetsFile({ articles: articlesData, altoBuffers: altoBuffers });
+  if (metsResponse.status === "error") {
+    log.error(`Failed to generate METS file: ${metsResponse.message}`);
+    return {
+      status: "error",
+      message: `Failed to generate METS file: ${metsResponse.message}`,
+    };
+  }
+  const metsBuffer = metsResponse.metsBuffer;
 };

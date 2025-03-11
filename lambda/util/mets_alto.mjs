@@ -32,13 +32,66 @@ export const generateAltoFile = ({ pageText, pageId }) => {
   };
 
   const altoXML = builder.buildObject(altoObject);
-  const altoPath = `./../../documents/page_${pageId}.xml`;
+  const altoPath = `./../documents/page_${pageId}.xml`;
   fs.writeFileSync(altoPath, altoXML);
   return {
     status: "success",
     message: "ALTO file created",
     altoBuffer: altoXML,
     name: `page_${pageId}.xml`,
+  };
+};
+
+export const generateMetsFile = ({ articles }) => {
+  const builder = new xml2js.Builder();
+  const metsObject = {
+    "mets:mets": {
+      $: {
+        xmlns: "http://www.loc.gov/METS/",
+        "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
+      },
+      "mets:structure": {
+        "mets:div": articles.map((article, index) => ({
+          $: { TYPE: "article" },
+          "mets:fptr": article.pages.map((page) => ({
+            $: {
+              FILEID: `alto_${article.title.replace(/ /g, "_")}_page_${page}`,
+            },
+          })),
+        })),
+      },
+      "mets:fileSec": {
+        "mets:fileGrp": {
+          $: { USE: "alto" },
+          "mets:file": articles.flatMap((article, index) =>
+            article.pages.map((page, pageIndex) => ({
+              $: {
+                ID: `alto_${article.title.replace(/ /g, "_")}_page_${page}`,
+                MIMETYPE: "application/xml",
+              },
+              "mets:FLocat": {
+                $: {
+                  "xlink:type": "simple",
+                  "xlink:href": `https://example.com/alto_files/alto_${article.title.replace(
+                    / /g,
+                    "_"
+                  )}_page_${page}.xml`,
+                },
+              },
+            }))
+          ),
+        },
+      },
+    },
+  };
+  const metsXML = builder.buildObject(metsObject);
+  const metsPath = `./../documents/mets_page.xml`;
+  fs.writeFileSync(metsPath, metsXML);
+  return {
+    status: "success",
+    message: "ALTO file created",
+    metsBuffer: metsXML,
+    name: `mets_page.xml`,
   };
 };
 
