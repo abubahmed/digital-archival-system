@@ -4,56 +4,49 @@ import log from "./logger.mjs";
 import xml2js from "xml2js";
 import { formatTimestamp } from "./helper.mjs";
 
-export const generateAltoFile = ({ pageText, pageId, dir }) => {
-  const builder = new xml2js.Builder();
+export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = false }) => {
   const altoObject = {
     "alto:alto": {
       $: {
         "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
       },
       "alto:Layout": {
-        "alto:Page": [
-          {
-            $: {
-              ID: `${pageId}`,
-            },
-            "alto:TextBlock": [
-              {
-                "alto:String": [
-                  {
-                    _: pageText,
-                  },
-                ],
-              },
-            ],
+        "alto:Page": {
+          $: {
+            ID: `page_${pageId}`,
           },
-        ],
+          "alto:TextBlock": {
+            "alto:String": {
+              _: pageText,
+            },
+          },
+        },
       },
     },
   };
 
+  const builder = new xml2js.Builder();
   const altoXML = builder.buildObject(altoObject);
-  const path = `./../documents/${dir}/`;
-  fs.mkdirSync(path, { recursive: true });
-  fs.writeFileSync(path + `page_${pageId}.alto.xml`, altoXML);
+  if (downloadLocally && dir) {
+    const path = `./../documents/${dir}/`;
+    fs.mkdirSync(path, { recursive: true });
+    fs.writeFileSync(path + `page_${pageId}.alto.xml`, altoXML);
+  }
+
   return {
     status: "success",
     message: "ALTO file created",
     altoBuffer: altoXML,
-    name: `page_${pageId}.xml`,
+    name: `alto_${pageId}.xml`,
   };
 };
 
-export const generateMetsFile = ({ articlesData, dir }) => {
+export const generateMetsFile = ({ articlesData, dir, downloadLocally = false }) => {
   const metsXmlObject = {
     "mets:mets": {
       $: {
         "xmlns:mets": "http://www.loc.gov/METS/",
         "xmlns:xlink": "http://www.w3.org/1999/xlink",
-        "xmlns:mods": "http://www.loc.gov/mods/v3",
-        "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
-        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-        "xsi:schemaLocation": "http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd",
       },
       "mets:metsHdr": {
         $: {
@@ -70,9 +63,7 @@ export const generateMetsFile = ({ articlesData, dir }) => {
       "mets:fileSec": {
         "mets:fileGrp": [
           {
-            $: {
-              USE: "PDF",
-            },
+            $: { USE: "PDF" },
             "mets:file": {
               $: {
                 ID: "full_pdf",
@@ -80,80 +71,65 @@ export const generateMetsFile = ({ articlesData, dir }) => {
               },
               "mets:FLocat": {
                 $: {
-                  "xlink:href": "dailyprince-issue_" + formatTimestamp(new Date()) + ".pdf",
+                  "xlink:href": `dailyprince-issue_${formatTimestamp(new Date())}.pdf`,
                 },
               },
             },
           },
           {
-            $: {
-              USE: "ALTO",
-            },
-            "mets:file": articlesData.flatMap((article) => {
-              const files = [];
-              for (const page of article.pages) {
-                files.push({
+            $: { USE: "ALTO" },
+            "mets:file": articlesData.flatMap((article) =>
+              article.pages.map((page) => ({
+                $: {
+                  ID: `alto_${page}`,
+                  MIMETYPE: "text/xml",
+                },
+                "mets:FLocat": {
                   $: {
-                    ID: `alto_${page}`,
-                    MIMETYPE: "text/xml",
+                    "xlink:href": `page_${page}.alto.xml`,
                   },
-                  "mets:FLocat": {
-                    $: {
-                      LOCTYPE: "URL",
-                      "xlink:href": `page_${page}.alto.xml`,
-                    },
-                  },
-                });
-              }
-              return files;
-            }),
+                },
+              }))
+            ),
           },
         ],
       },
       "mets:structMap": {
-        $: {
-          TYPE: "logical",
-        },
-        "mets:div": articlesData.map((article, idx) => {
-          const articleDiv = {
+        $: { TYPE: "logical" },
+        "mets:div": articlesData.map((article, idx) => ({
+          $: {
+            TYPE: "article",
+            LABEL: article.title,
+          },
+          "mets:mptr": {
             $: {
-              TYPE: "article",
-              LABEL: article.title,
-              DMDID: `dmd${idx + 1}`,
+              "xlink:href": article.url,
             },
-            "mets:mptr": {
-              $: {
-                "xlink:href": article.url,
-              },
+          },
+          "mets:div": article.pages.map((page) => ({
+            $: {
+              TYPE: "page",
+              LABEL: `Page ${page}`,
             },
-            "mets:div": [],
-          };
-
-          for (const page of article.pages) {
-            articleDiv["mets:div"].push({
+            "mets:fptr": {
               $: {
-                TYPE: "page",
-                LABEL: `Page ${page}`,
                 FILEID: `alto_${page}`,
               },
-              "mets:fptr": {
-                $: {
-                  FILEID: `alto_${page}`,
-                },
-              },
-            });
-          }
-          return articleDiv;
-        }),
+            },
+          })),
+        })),
       },
     },
   };
 
   const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  ", newline: "\n" } });
   const xmlString = builder.buildObject(metsXmlObject);
-  const path = `./../documents/${dir}/`;
-  fs.mkdirSync(path, { recursive: true });
-  fs.writeFileSync(path + "mets.xml", xmlString);
+  if (downloadLocally && dir) {
+    const path = `./../documents/${dir}/`;
+    fs.mkdirSync(path, { recursive: true });
+    fs.writeFileSync(path + "mets.xml", xmlString);
+  }
+
   return {
     status: "success",
     message: "METS file created",

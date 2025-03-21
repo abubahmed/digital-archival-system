@@ -1,11 +1,6 @@
 import dotenv from "dotenv";
 import { S3Client } from "@aws-sdk/client-s3";
-import {
-  downloadImagesAsPdf,
-  downloadImagesAsPdfBuffer,
-  downloadVideoAsBuffer,
-  downloadVideo,
-} from "../util/download_media.mjs";
+import { downloadImages, downloadVideo } from "../util/download_media_ig.mjs";
 import { putToS3, formatTimestamp } from "../util/helper.mjs";
 import { addTime, getLatestTime } from "../util/manage_db.mjs";
 import { fetchInstagramPosts } from "../util/api.mjs";
@@ -76,56 +71,42 @@ export const instagramHandler = async ({ event, context, callback }) => {
     const S3Path = `instagram/${sanitizedFileName}`;
     const localPath = `./../documents/${sanitizedFileName}`;
 
-    // If process is running locally, download the media to a local path, depending on the type of media
-    if (local) {
-      const mediaDownloadResponse =
-        type === "video"
-          ? await downloadVideo({ videoUrl, path: localPath, post: post })
-          : await downloadImagesAsPdf({ imageUrls: images, path: localPath, post: post });
-      if (mediaDownloadResponse.status === "error") {
-        log.error("Failed to download media locally, skipping post");
-        continue;
-      }
-    }
-
-    // Download the media as a buffer(s), depending on the type of media
+    // Download the media (images or video) if local and create a PDF buffer
     const mediaBufferResponse =
       type === "video"
-        ? await downloadVideoAsBuffer({ videoUrl, post: post })
-        : await downloadImagesAsPdfBuffer({ imageUrls: images, post: post });
-    if (mediaBufferResponse.status === "error") {
-      log.error("Failed to download media as buffer, skipping post");
-      continue;
-    }
+        ? await downloadVideo({
+            videoUrl,
+            path: localPath,
+            post,
+            downloadLocally: local,
+          })
+        : await downloadImages({
+            imageUrls: images,
+            path: localPath,
+            post,
+            downloadLocally: local,
+          });
 
     // Upload the media buffer(s) to S3, depending on the type of media
     if (type === "video") {
-      const videoPath = `${S3Path}/video.mp4`;
       const S3VideoResponse = await putToS3({
         file: mediaBufferResponse.videoBuffer,
         S3Client: s3Client,
         bucketName,
-        path: videoPath,
+        path: `${S3Path}/video.mp4`,
       });
-      if (
-        S3VideoResponse.status === "error" ||
-        S3VideoResponse.response.$metadata.httpStatusCode != 200
-      ) {
+      if (S3VideoResponse.status === "error" || S3VideoResponse?.response.$metadata.httpStatusCode != 200) {
         log.error("Failed to upload video to S3, skipping post");
         continue;
       }
 
-      const pdfPath = `${S3Path}/metadata.pdf`;
-      const S3PdfResponse = await putToS3({
-        file: mediaBufferResponse.pdfBuffer,
+      const S3MetadataResponse = await putToS3({
+        file: mediaBufferResponse.metadataBuffer,
         S3Client: s3Client,
         bucketName,
-        path: pdfPath,
+        path: `${S3Path}/metadata.pdf`,
       });
-      if (
-        S3PdfResponse.status === "error" ||
-        S3PdfResponse.response.$metadata.httpStatusCode != 200
-      ) {
+      if (S3MetadataResponse.status === "error" || S3MetadataResponse?.response.$metadata.httpStatusCode != 200) {
         log.error("Failed to upload metadata to S3, skipping post");
         continue;
       }
