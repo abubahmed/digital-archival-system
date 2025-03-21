@@ -30,7 +30,7 @@ export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = fals
   if (downloadLocally && dir) {
     const path = `./../documents/${dir}/`;
     fs.mkdirSync(path, { recursive: true });
-    fs.writeFileSync(path + `page_${pageId}.alto.xml`, altoXML);
+    fs.writeFileSync(path + `alto_${pageId}.xml`, altoXML);
   }
 
   return {
