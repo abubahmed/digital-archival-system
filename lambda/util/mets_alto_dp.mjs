@@ -140,19 +140,14 @@ export const generateMetsFile = ({ articlesData, dir, downloadLocally = false })
 export const extractText = async ({ buffer }) => {
   const pdfExtract = new PDFExtract();
   const options = {};
-  try {
-    const data = await pdfExtract.extractBuffer(buffer, options);
-    const pages = [];
-    for (const page of data.pages) {
-      const text = page.content.map((content) => content.str).join(" ");
-      pages.push({
-        text: text,
-        number: page.pageInfo.num,
-      });
-    }
-    return pages;
-  } catch (error) {
-    log.error(error);
-    return [];
+  const data = await pdfExtract.extractBuffer(buffer, options);
+  const pages = [];
+  for (const page of data.pages) {
+    const text = page.content.map((content) => content.str).join(" ");
+    pages.push({
+      text: text,
+      number: page.pageInfo.num,
+    });
   }
+  return pages;
 };
