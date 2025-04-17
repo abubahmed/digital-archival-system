@@ -1,6 +1,5 @@
 import { PDFExtract } from "pdf.js-extract";
 import fs from "fs";
-import log from "./logger.mjs";
 import xml2js from "xml2js";
 import { formatTimestamp } from "./helper.mjs";
 

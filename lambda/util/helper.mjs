@@ -2,7 +2,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { PDFDocument } from "pdf-lib";
 import fs from "fs";
 import dotenv from "dotenv";
-import log from "./logger.mjs";
+
 dotenv.config();
 
 export const putToS3 = async ({ file, S3Client, bucketName, path }) => {

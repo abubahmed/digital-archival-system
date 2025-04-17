@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "node -r module-alias/register index.test.mjs",
-    "start": "node -r module-alias/register index.mjs"
+    "start": "node index.mjs",
+    "test": "node index.test.mjs"
   },
   "_moduleAliases": {
     "@": "./"

@@ -3,6 +3,7 @@ import log from "./logger.mjs";
 import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./helper.mjs";
 import { PDFDocument } from "pdf-lib";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 export const getArticlesFromMonth = async ({ month, year }) => {

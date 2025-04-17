@@ -1,7 +1,7 @@
-import { getArticlesFromMonth, captureArticle } from "../util/api.mjs";
-import { mergePDFBuffers } from "../util/helper.mjs";
+import { getArticlesFromMonth, captureArticle } from "./../util/api.mjs";
+import { mergePDFBuffers } from "./../util/helper.mjs";
 import puppeteer from "puppeteer";
-import log from "../util/logger.mjs";
+import log from "./../util/logger.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 

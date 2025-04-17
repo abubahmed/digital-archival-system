@@ -1,7 +1,6 @@
-import { PDFExtract } from "pdf.js-extract";
 import fs from "fs";
 import log from "./../util/logger.mjs";
-import { extractText, generateAltoFile } from "../util/mets_alto.mjs";
+import { extractText, generateAltoFile } from "./../util/mets_alto.mjs";
 
 
 const buffer = fs.readFileSync(
