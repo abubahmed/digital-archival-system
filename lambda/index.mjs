@@ -8,8 +8,16 @@ export const handler = async (event, context, callback) => {
   console.log(context);
 
   const archiveType = process.env.ARCHIVE_TYPE;
-  if (archiveType === "instagram") await instagramHandler({ event, context, callback });
-  if (archiveType === "dailyprince") await dailyPrinceHandler({ event, context, callback });
+  switch (archiveType) {
+    case "instagram":
+      await instagramHandler({ event, context, callback });
+      break;
+    case "dailyprince":
+      await dailyPrinceHandler({ event, context, callback });
+      break;
+    default:
+      console.log(`Unknown archive type: ${archiveType}`);
+  }
 
   return {
     statusCode: 200,

@@ -1,6 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
 import { downloadImages, downloadVideo } from "./../util/download_media_ig.mjs";
-import { putToS3, formatTimestamp } from "./../util/helper.mjs";
+import { putToS3, formatTimestamp, instantiateS3 } from "./../util/helper.mjs";
 import { addTime, getLatestTime } from "./../util/manage_db_ig.mjs";
 import { fetchInstagramPosts } from "./../util/api.mjs";
 import log from "./../util/logger.mjs";
@@ -13,15 +12,7 @@ export const instagramHandler = async ({ event, context, callback }) => {
   const bucketName = process.env.AWS_BUCKET_NAME;
 
   // Instantiate the AWS S3 client
-  const s3Client = new S3Client({
-    region: process.env.AWS_BUCKET_REGION,
-    credentials: local
-      ? {
-          accessKeyId: process.env.AWS_ACCESS_KEY,
-          secretAccessKey: process.env.AWS_SECRET_KEY,
-        }
-      : undefined,
-  });
+  const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
 
   // Retrieve the last time the archival process was run from the database

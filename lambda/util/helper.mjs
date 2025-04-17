@@ -1,9 +1,24 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { PDFDocument } from "pdf-lib";
+import { S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+export const instantiateS3 = () => {
+  const S3Client = new S3Client({
+    region: process.env.AWS_BUCKET_REGION,
+    credentials: process.env.LOCAL
+      ? {
+          accessKeyId: process.env.AWS_ACCESS_KEY,
+          secretAccessKey: process.env.AWS_SECRET_KEY,
+        }
+      : undefined,
+  });
+  if (!S3Client) throw new Error("Failed to instantiate S3 client. Please check your AWS credentials and region.");
+  return S3Client;
+};
 
 export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
   const command = new PutObjectCommand({
