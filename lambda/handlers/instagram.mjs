@@ -25,34 +25,11 @@ export const instagramHandler = async ({ event, context, callback }) => {
   log.info("AWS S3 client instantiated");
 
   // Retrieve the last time the archival process was run from the database
-  const latestTimeResponse = getLatestTime();
-  if (latestTimeResponse.status === "error") {
-    log.error("Failed to get latest archival time");
-    return {
-      status: "error",
-      message: "Failed to get latest archival time",
-    };
-  }
-  const latestTimeISO = latestTimeResponse.time;
-  const addTimeResponse = addTime();
-  if (addTimeResponse.status === "error") {
-    log.error("Failed to add new archival time");
-    return {
-      status: "error",
-      message: "Failed to add new archival time",
-    };
-  }
+  const latestTimeISO = getLatestTime();
+  addTime();
 
   // Fetch all Instagram posts posted after the most recent archival time
-  const { status, posts } = await fetchInstagramPosts({ after: latestTimeISO });
-  if (status === "error") {
-    log.error("Failed to fetch Instagram posts");
-    return {
-      status: "error",
-      message: "Failed to fetch Instagram posts",
-    };
-  }
-  if (posts.length === 0) return;
+  const posts = await fetchInstagramPosts({ after: latestTimeISO });
   log.info(`${posts.length} Instagram posts fetched`);
 
   // Iterate through each post and process it
@@ -73,7 +50,7 @@ export const instagramHandler = async ({ event, context, callback }) => {
     const localPath = `./../documents/${sanitizedFileName}`;
 
     // Download the media (images or video) if local and create a PDF buffer
-    const mediaBufferResponse =
+    let mediaBufferResponse =
       type === "video"
         ? await downloadVideo({
             videoUrl,
@@ -90,39 +67,25 @@ export const instagramHandler = async ({ event, context, callback }) => {
 
     // Upload the media buffer(s) to S3, depending on the type of media
     if (type === "video") {
-      const S3VideoResponse = await putToS3({
+      await putToS3({
         file: mediaBufferResponse.videoBuffer,
         S3Client: s3Client,
         bucketName,
         path: `${S3Path}/video.mp4`,
       });
-      if (S3VideoResponse.status === "error" || S3VideoResponse?.response.$metadata.httpStatusCode != 200) {
-        log.error("Failed to upload video to S3, skipping post");
-        continue;
-      }
-
-      const S3MetadataResponse = await putToS3({
+      await putToS3({
         file: mediaBufferResponse.metadataBuffer,
         S3Client: s3Client,
         bucketName,
         path: `${S3Path}/metadata.pdf`,
       });
-      if (S3MetadataResponse.status === "error" || S3MetadataResponse?.response.$metadata.httpStatusCode != 200) {
-        log.error("Failed to upload metadata to S3, skipping post");
-        continue;
-      }
     } else {
-      const pdfPath = `${S3Path}.pdf`;
-      const S3Response = await putToS3({
+      await putToS3({
         file: mediaBufferResponse.buffer,
         S3Client: s3Client,
         bucketName,
-        path: pdfPath,
+        path: `${S3Path}.pdf`,
       });
-      if (S3Response.status === "error" || S3Response.response.$metadata.httpStatusCode != 200) {
-        log.error("Failed to upload to S3, skipping post");
-        continue;
-      }
     }
   }
 };

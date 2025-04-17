@@ -31,10 +31,7 @@ export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = fals
     fs.mkdirSync(path, { recursive: true });
     fs.writeFileSync(path + `alto_${pageId}.xml`, altoXML);
   }
-
   return {
-    status: "success",
-    message: "ALTO file created",
     altoBuffer: altoXML,
     name: `alto_${pageId}.xml`,
   };
@@ -128,11 +125,9 @@ export const generateMetsFile = ({ articlesData, dir, downloadLocally = false })
     fs.mkdirSync(path, { recursive: true });
     fs.writeFileSync(path + "mets.xml", xmlString);
   }
-
   return {
-    status: "success",
-    message: "METS file created",
-    metsBuffer: xmlString,
+    buffer: xmlString,
+    name: "mets.xml",
   };
 };
 

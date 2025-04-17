@@ -28,7 +28,6 @@ export const addTime = () => {
   const addNewTime = db.prepare("INSERT INTO times (time) VALUES (?)");
   addNewTime.run(time);
   db.close();
-  return time;
 };
 
 export const getLatestTime = () => {

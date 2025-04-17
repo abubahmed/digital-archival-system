@@ -44,21 +44,13 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       startingPage: startingPage,
       downloadLocally: local,
     });
-    if (response.status === "error") {
-      log.error(`Failed to capture article: ${message}`);
-      continue;
-    }
     log.info(`Captured article: ${url}`);
     articlesData.push(response);
     startingPage += response.pages.length;
   }
   browser.close();
   if (articlesData.length === 0) {
-    log.info("No articles captured");
-    return {
-      status: "error",
-      message: "No articles captured",
-    };
+    throw new Error("No articles captured. Please check the provided URLs.");
   }
 
   // Merge all captured articles into a single PDF buffer
@@ -98,60 +90,32 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     dir: issueName,
     downloadLocally: local,
   });
-  if (metsResponse.status === "error") {
-    log.error(`Failed to generate METS file: ${metsResponse.message}`);
-    return {
-      status: "error",
-      message: `Failed to generate METS file: ${metsResponse.message}`,
-    };
-  }
   log.info("METS file generated");
 
   // Upload the merged PDF buffer, METS file, and ALTO files to S3
-  const S3IssueResponse = await putToS3({
+  await putToS3({
     file: mergedPDFBuffer,
     S3Client: s3Client,
     bucketName,
     path: `dailyprince/${issueName}/${issueName}.pdf`,
   });
-  if (S3IssueResponse.status === "error" || S3IssueResponse?.response.$metadata.httpStatusCode != 200) {
-    log.error("Failed to upload to S3");
-    return {
-      status: "error",
-      message: "Failed to upload metadata to S3",
-    };
-  }
   log.info(`Issue PDF uploaded to S3: ${issueName}.pdf`);
 
-  const S3MetadataResponse = await putToS3({
+  await putToS3({
     file: metsResponse.buffer,
     S3Client: s3Client,
     bucketName,
     path: `dailyprince/${issueName}/mets.xml`,
   });
-  if (S3MetadataResponse.status === "error" || S3MetadataResponse?.response.$metadata.httpStatusCode != 200) {
-    log.error("Failed to upload metadata to S3");
-    return {
-      status: "error",
-      message: "Failed to upload metadata to S3",
-    };
-  }
   log.info(`METS file uploaded to S3: mets.xml`);
 
   for (const altoBuffer of altoBuffers) {
-    const S3AltoResponse = await putToS3({
+    await putToS3({
       file: altoBuffer.buffer,
       S3Client: s3Client,
       bucketName,
       path: `dailyprince/${issueName}/${altoBuffer.name}`,
     });
-    if (S3AltoResponse.status === "error" || S3AltoResponse?.response.$metadata.httpStatusCode != 200) {
-      log.error("Failed to upload ALTO file to S3");
-      return {
-        status: "error",
-        message: "Failed to upload ALTO file to S3",
-      };
-    }
     log.info(`ALTO file uploaded to S3: ${altoBuffer.name}`);
   }
 };

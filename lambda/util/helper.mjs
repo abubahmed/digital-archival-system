@@ -12,7 +12,9 @@ export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
     Body: file,
   });
   const response = await S3Client.send(command);
-  return response;
+  if (response.$metadata.httpStatusCode !== 200) {
+    throw new Error(`Failed to upload to S3: ${response.$metadata.httpStatusCode}`);
+  }
 };
 
 export const formatTimestamp = (timestamp) => {
