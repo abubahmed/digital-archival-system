@@ -1,7 +1,7 @@
 import { PDFExtract } from "pdf.js-extract";
 import fs from "fs";
 import xml2js from "xml2js";
-import { formatTimestamp } from "./helper.mjs";
+import { formatTimestamp } from "./misc_helper.mjs";
 
 export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = false }) => {
   const altoObject = {
@@ -27,7 +27,7 @@ export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = fals
   const builder = new xml2js.Builder();
   const altoXML = builder.buildObject(altoObject);
   if (downloadLocally && dir) {
-    const path = `./../documents/${dir}/`;
+    const path = `./documents/${dir}/`;
     fs.mkdirSync(path, { recursive: true });
     fs.writeFileSync(path + `alto_${pageId}.xml`, altoXML);
   }
@@ -121,7 +121,7 @@ export const generateMetsFile = ({ articlesData, dir, downloadLocally = false })
   const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  ", newline: "\n" } });
   const xmlString = builder.buildObject(metsXmlObject);
   if (downloadLocally && dir) {
-    const path = `./../documents/${dir}/`;
+    const path = `./documents/${dir}/`;
     fs.mkdirSync(path, { recursive: true });
     fs.writeFileSync(path + "mets.xml", xmlString);
   }

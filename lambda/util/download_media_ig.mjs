@@ -3,8 +3,7 @@ import fs from "fs";
 import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
-import log from "./logger.mjs";
-import { addMetadataPage } from "./api.mjs";
+import { addMetadataPage } from "./fetch_data.mjs";
 
 export const downloadImages = async ({ imageUrls, path, post, downloadLocally = false }) => {
   const doc = new PDFDocument({ autoFirstPage: false });
@@ -33,14 +32,13 @@ export const downloadImages = async ({ imageUrls, path, post, downloadLocally = 
   const pdfBuffer = Buffer.concat(pdfChunks);
 
   if (downloadLocally && path) {
-    const pdfPath = path.endsWith(".pdf") ? path : `${path}.pdf`;
-    fs.mkdirSync(require("path").dirname(pdfPath), { recursive: true });
-    fs.writeFileSync(pdfPath, pdfBuffer);
+    fs.mkdirSync(require("path").dirname(path), { recursive: true });
+    fs.writeFileSync(path, pdfBuffer);
   }
   return buffer;
 };
 
-export const downloadVideo = async ({ videoUrl, path, post, downloadLocally = false }) => {
+export const downloadVideo = async ({ videoUrl, videoPath, metadataPath, post, downloadLocally = false }) => {
   const response = await axios({
     method: "get",
     url: videoUrl,
@@ -74,10 +72,8 @@ export const downloadVideo = async ({ videoUrl, path, post, downloadLocally = fa
 
   if (downloadLocally && path) {
     fs.mkdirSync(path, { recursive: true });
-    const videoPath = `${path}/video.mp4`;
-    const pdfPath = `${path}/metadata.pdf`;
     fs.writeFileSync(videoPath, videoBuffer);
-    fs.writeFileSync(pdfPath, pdfBuffer);
+    fs.writeFileSync(metadataPath, pdfBuffer);
   }
   return pdfBuffer;
 };

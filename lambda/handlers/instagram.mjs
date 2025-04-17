@@ -1,7 +1,8 @@
 import { downloadImages, downloadVideo } from "./../util/download_media_ig.mjs";
-import { putToS3, formatTimestamp, instantiateS3 } from "./../util/helper.mjs";
+import { formatTimestamp } from "../util/misc_helper.mjs";
+import { putToS3, instantiateS3 } from "./../util/s3_helper.mjs";
 import { addTime, getLatestTime } from "./../util/manage_db_ig.mjs";
-import { fetchInstagramPosts } from "./../util/api.mjs";
+import { fetchInstagramPosts } from "../util/fetch_data.mjs";
 import log from "./../util/logger.mjs";
 import dotenv from "dotenv";
 
@@ -11,15 +12,17 @@ export const instagramHandler = async ({ event, context, callback }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
 
-  // Instantiate the AWS S3 client
+  const latestTimeISO = getLatestTime();
+  const currentTime = new Date();
+  const latestTime = new Date(latestTimeISO);
+  if ((currentTime - latestTime) / (1000 * 60 * 60 * 24) < 7) {
+    throw new Error("Latest time is less than 7 days old");
+  }
+
+  // Instantiate the AWS S3 client and fetch Instagram posts
   const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
-
-  // Retrieve the last time the archival process was run from the database
-  const latestTimeISO = getLatestTime();
   addTime();
-
-  // Fetch all Instagram posts posted after the most recent archival time
   const posts = await fetchInstagramPosts({ after: latestTimeISO });
   log.info(`${posts.length} Instagram posts fetched`);
 
@@ -37,45 +40,47 @@ export const instagramHandler = async ({ event, context, callback }) => {
     // Define the S3 path and local path for storing the resultant media
     const fileName = url + formatTimestamp(timestamp);
     const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const S3Path = `instagram/${sanitizedFileName}`;
-    const localPath = `./../documents/${sanitizedFileName}`;
+    const s3Path = `instagram/${sanitizedFileName}`;
+    const localPath = `./documents/${sanitizedFileName}`;
 
     // Download the media (images or video) if local and create a PDF buffer
-    let mediaBufferResponse =
-      type === "video"
-        ? await downloadVideo({
-            videoUrl,
-            path: localPath,
-            post,
-            downloadLocally: local,
-          })
-        : await downloadImages({
-            imageUrls: images,
-            path: localPath,
-            post,
-            downloadLocally: local,
-          });
-
-    // Upload the media buffer(s) to S3, depending on the type of media
     if (type === "video") {
+      const mediaBufferResponse = await downloadVideo({
+        videoUrl,
+        videoPath: `${localPath}/video.mp4`,
+        metadataPath: `${localPath}/metadata.pdf`,
+        post,
+        downloadLocally: local,
+      });
+
       await putToS3({
         file: mediaBufferResponse.videoBuffer,
         S3Client: s3Client,
         bucketName,
-        path: `${S3Path}/video.mp4`,
+        path: `${s3Path}/video.mp4`,
       });
       await putToS3({
         file: mediaBufferResponse.metadataBuffer,
         S3Client: s3Client,
         bucketName,
-        path: `${S3Path}/metadata.pdf`,
+        path: `${s3Path}/metadata.pdf`,
       });
-    } else {
+    }
+
+    if (type === "sidecar") {
+
+      const mediaBufferResponse = await downloadImages({
+        imageUrls: images,
+        path: `${localPath}.pdf`,
+        post,
+        downloadLocally: local,
+      });
+
       await putToS3({
         file: mediaBufferResponse.buffer,
         S3Client: s3Client,
         bucketName,
-        path: `${S3Path}.pdf`,
+        path: `${s3Path}.pdf`,
       });
     }
   }

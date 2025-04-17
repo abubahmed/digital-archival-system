@@ -1,36 +1,8 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { PDFDocument } from "pdf-lib";
-import { S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-export const instantiateS3 = () => {
-  const S3Client = new S3Client({
-    region: process.env.AWS_BUCKET_REGION,
-    credentials: process.env.LOCAL
-      ? {
-          accessKeyId: process.env.AWS_ACCESS_KEY,
-          secretAccessKey: process.env.AWS_SECRET_KEY,
-        }
-      : undefined,
-  });
-  if (!S3Client) throw new Error("Failed to instantiate S3 client. Please check your AWS credentials and region.");
-  return S3Client;
-};
-
-export const putToS3 = async ({ file, S3Client, bucketName, path }) => {
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: path,
-    Body: file,
-  });
-  const response = await S3Client.send(command);
-  if (response.$metadata.httpStatusCode !== 200) {
-    throw new Error(`Failed to upload to S3: ${response.$metadata.httpStatusCode}`);
-  }
-};
 
 export const formatTimestamp = (timestamp) => {
   const timestampDate = new Date(timestamp);
@@ -85,8 +57,41 @@ export const mergePDFBuffers = async ({ buffers, dir }) => {
     copiedPages.forEach((page) => mergedPdf.addPage(page));
   }
   const mergedPdfBytes = await mergedPdf.save();
-  const path = `./../documents/${dir}/`;
+  const path = `./documents/${dir}/`;
   fs.mkdirSync(path, { recursive: true });
-  fs.writeFileSync(`./../documents/${dir}/${dir}.pdf`, mergedPdfBytes);
+  fs.writeFileSync(`./documents/${dir}/${dir}.pdf`, mergedPdfBytes);
   return mergedPdfBytes;
+};
+
+export const addMetadataPage = ({ doc, post }) => {
+  const fontSize = 12;
+  const lineSpacing = 1.15;
+  const lineGap = fontSize * lineSpacing - fontSize;
+  const margin = 96;
+
+  const formatMetadata = (label, value) => {
+    const sanitizedValue = sanitizeText(value);
+    return sanitizedValue && sanitizedValue.length > 0 ? `${label}: ${sanitizedValue}\n` : "";
+  };
+  doc.addPage({ size: [816, 1056] });
+  let postText = "";
+  const postTimestamp = beautifyTimestamp(formatTimestamp(post.timestamp));
+  const archivedTimestamp = beautifyTimestamp(formatTimestamp(new Date()));
+  postText += postTimestamp ? `Created Timestamp: ${postTimestamp}\n` : "";
+  postText += archivedTimestamp ? `Archival Timestamp: ${archivedTimestamp}\n` : "";
+
+  postText += formatMetadata("URL", post.url);
+  postText += formatMetadata("Post ID", post.postId);
+  postText += formatMetadata("Short Code", post.shortCode);
+  postText += formatMetadata("Hashtags", post.hashtags);
+  postText += formatMetadata("Mentions", post.mentions);
+  postText += formatMetadata("Comments Count", post.commentsCount);
+  postText += formatMetadata("Likes Count", post.likesCount);
+  postText += formatMetadata("Owner Full Name", post.ownerFullName);
+  postText += formatMetadata("Owner Username", post.ownerUsername);
+  postText += formatMetadata("Caption", post.caption);
+  postText += formatMetadata("Alt Text", post.alt);
+
+  doc.fontSize(fontSize);
+  doc.font("./fonts/arial.ttf").text(postText, margin, margin, { lineGap });
 };

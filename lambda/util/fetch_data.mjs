@@ -1,7 +1,7 @@
 import { ApifyClient } from "apify-client";
-import log from "./logger.mjs";
-import { formatTimestamp, beautifyTimestamp, sanitizeText } from "./helper.mjs";
+import { formatTimestamp } from "./misc_helper.mjs";
 import { PDFDocument } from "pdf-lib";
+import log from "./logger.mjs";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -153,39 +153,6 @@ export const fetchInstagramPosts = async ({ after }) => {
     }
   });
 
-  if (posts.length === 0) throw new Error("No Instagram posts found after the specified date.");
+  if (posts.length === 0) throw new Error("No Instagram posts found after the specified date");
   return posts;
-};
-
-export const addMetadataPage = ({ doc, post }) => {
-  const fontSize = 12;
-  const lineSpacing = 1.15;
-  const lineGap = fontSize * lineSpacing - fontSize;
-  const margin = 96;
-
-  const formatMetadata = (label, value) => {
-    const sanitizedValue = sanitizeText(value);
-    return sanitizedValue && sanitizedValue.length > 0 ? `${label}: ${sanitizedValue}\n` : "";
-  };
-  doc.addPage({ size: [816, 1056] });
-  let postText = "";
-  const postTimestamp = beautifyTimestamp(formatTimestamp(post.timestamp));
-  const archivedTimestamp = beautifyTimestamp(formatTimestamp(new Date()));
-  postText += postTimestamp ? `Created Timestamp: ${postTimestamp}\n` : "";
-  postText += archivedTimestamp ? `Archival Timestamp: ${archivedTimestamp}\n` : "";
-
-  postText += formatMetadata("URL", post.url);
-  postText += formatMetadata("Post ID", post.postId);
-  postText += formatMetadata("Short Code", post.shortCode);
-  postText += formatMetadata("Hashtags", post.hashtags);
-  postText += formatMetadata("Mentions", post.mentions);
-  postText += formatMetadata("Comments Count", post.commentsCount);
-  postText += formatMetadata("Likes Count", post.likesCount);
-  postText += formatMetadata("Owner Full Name", post.ownerFullName);
-  postText += formatMetadata("Owner Username", post.ownerUsername);
-  postText += formatMetadata("Caption", post.caption);
-  postText += formatMetadata("Alt Text", post.alt);
-
-  doc.fontSize(fontSize);
-  doc.font("./fonts/arial.ttf").text(postText, margin, margin, { lineGap });
 };
