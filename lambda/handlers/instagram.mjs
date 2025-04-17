@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { S3Client } from "@aws-sdk/client-s3";
 import { downloadImages, downloadVideo } from "../util/download_media_ig.mjs";
 import { putToS3, formatTimestamp } from "../util/helper.mjs";
-import { addTime, getLatestTime } from "../util/manage_db.mjs";
+import { addTime, getLatestTime } from "../util/manage_db_ig.mjs";
 import { fetchInstagramPosts } from "../util/api.mjs";
 import log from "../util/logger.mjs";
 dotenv.config();

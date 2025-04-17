@@ -25,7 +25,6 @@ export const getArticlesFromMonth = async ({ month, year }) => {
     return {
       status: "error",
       message: error.message,
-      items: [],
     };
   }
 };
@@ -140,7 +139,7 @@ export const fetchInstagramPosts = async ({ after }) => {
       resultsType: "posts",
       searchType: "hashtag",
       searchLimit: 1,
-      // onlyPostsNewerThan: dateFormatted,
+      onlyPostsNewerThan: dateFormatted,
       enhanceUserSearchWithFacebookPage: false,
       resultsLimit,
     };
@@ -188,7 +187,6 @@ export const fetchInstagramPosts = async ({ after }) => {
     return {
       status: "error",
       message: error.message,
-      posts: [],
     };
   }
 };
@@ -224,8 +222,4 @@ export const addMetadataPage = ({ doc, post }) => {
 
   doc.fontSize(fontSize);
   doc.font("./fonts/arial.ttf").text(postText, margin, margin, { lineGap });
-  return {
-    status: "success",
-    message: "Metadata page added",
-  };
 };

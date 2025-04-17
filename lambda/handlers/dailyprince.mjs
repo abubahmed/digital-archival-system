@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { S3Client } from "@aws-sdk/client-s3";
 import { captureArticle } from "../util/api.mjs";
 import { mergePDFBuffers, putToS3 } from "../util/helper.mjs";
-import { generateAltoFile, extractText, generateMetsFile } from "../util/mets_alto.mjs";
+import { generateAltoFile, extractText, generateMetsFile } from "../util/mets_alto_dp.mjs";
 import { formatTimestamp } from "../util/helper.mjs";
 import log from "../util/logger.mjs";
 import puppeteer from "puppeteer";
