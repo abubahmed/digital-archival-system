@@ -31,7 +31,6 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       header: index === 0,
       footer: index === event.webUrls.length - 1,
       startingPage: startingPage,
-      downloadLocally: local,
     });
     log.info(`Captured article: ${url}`);
     articlesData.push(response);
@@ -153,9 +152,6 @@ const captureArticle = async ({ url, browser, header, footer, startingPage }) =>
   await Promise.all(iframePromises);
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-  const formattedTimestamp = formatTimestamp(new Date());
-  const fileName = `${sanitizedWebUrl}_${formattedTimestamp}.pdf`;
   const pdfOptions = {
     width: "8.5in",
     height: "11in",
@@ -168,10 +164,9 @@ const captureArticle = async ({ url, browser, header, footer, startingPage }) =>
 
   return {
     pdfBuffer,
-    fileName,
     title: articleTitle,
-    url,
     pages: pages,
+    url,
   };
 };
 
