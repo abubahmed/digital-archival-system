@@ -1,7 +1,7 @@
 import { PDFExtract } from "pdf.js-extract";
 import fs from "fs";
 import xml2js from "xml2js";
-import { formatTimestamp } from "./misc_helper.mjs";
+import { formatTimestamp } from "./helper.mjs";
 
 export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = false }) => {
   const altoObject = {

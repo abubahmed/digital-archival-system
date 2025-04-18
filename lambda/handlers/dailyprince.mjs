@@ -1,8 +1,7 @@
 import dotenv from "dotenv";
-import { captureArticle } from "../util/fetch_data.mjs";
-import { mergePDFBuffers, formatTimestamp } from "../util/misc_helper.mjs";
 import { generateAltoFile, extractText, generateMetsFile } from "./../util/mets_alto_dp.mjs";
-import { putToS3, instantiateS3 } from "./../util/s3_helper.mjs";
+import { putToS3, instantiateS3, formatTimestamp } from "./../util/helper.mjs";
+import { PDFDocument } from "pdf-lib";
 import log from "./../util/logger.mjs";
 import puppeteer from "puppeteer";
 
@@ -98,4 +97,94 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     });
     log.info(`ALTO file uploaded to S3: ${altoBuffer.name}`);
   }
+};
+
+const captureArticle = async ({ url, browser, header, footer, startingPage }) => {
+  let page;
+  page = await browser.newPage();
+  const domain = new URL(url).host;
+  const cookies = [
+    {
+      name: "max-age",
+      value: `${60 * 60 * 24 * 2}`,
+      url: url,
+      domain: domain,
+      path: "/",
+      expires: new Date().getTime(),
+      "max-age": 60 * 60 * 24 * 2,
+    },
+  ];
+  await page.setCookie(...cookies);
+  await page.goto(url, {
+    timeout: 120000,
+    waitUntil: ["networkidle2", "domcontentloaded"],
+  });
+  await page.evaluate(
+    (header, footer) => {
+      let targetElements = "related";
+      if (!header) targetElements += ", header, .promo-bar";
+      if (!footer) targetElements += ", footer";
+      const targetItems = document.querySelectorAll(targetElements);
+      targetItems.forEach((item) => item.remove());
+    },
+    header,
+    footer
+  );
+  const articleTitle = await page.evaluate(() => {
+    const h1Element = document.querySelector(".article h1");
+    return h1Element ? h1Element.textContent : null;
+  });
+
+  await page.addStyleTag({
+    content: `
+        @page {
+          margin: 1in 0 1in 0;
+        }
+        @page :first {
+          margin-top: 0.5in;
+          margin-bottom: 1in;
+        }
+      `,
+  });
+  const iframes = await page.$$("iframe");
+  const iframePromises = iframes.map(async (iframeElement) => {
+    await iframeElement.contentFrame();
+  });
+  await Promise.all(iframePromises);
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const sanitizedWebUrl = url.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  const formattedTimestamp = formatTimestamp(new Date());
+  const fileName = `${sanitizedWebUrl}_${formattedTimestamp}.pdf`;
+  const pdfOptions = {
+    width: "8.5in",
+    height: "11in",
+    displayHeaderFooter: true,
+  };
+  const pdfBuffer = await page.pdf(pdfOptions);
+  const pdfLoaded = await PDFDocument.load(pdfBuffer);
+  const pageCount = pdfLoaded.getPageCount();
+  const pages = Array.from({ length: pageCount }, (_, i) => startingPage + i);
+
+  return {
+    pdfBuffer,
+    fileName,
+    title: articleTitle,
+    url,
+    pages: pages,
+  };
+};
+
+const mergePDFBuffers = async ({ buffers, dir }) => {
+  const mergedPdf = await PDFDocument.create();
+  for (const buffer of buffers) {
+    const pdf = await PDFDocument.load(buffer);
+    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+    copiedPages.forEach((page) => mergedPdf.addPage(page));
+  }
+  const mergedPdfBytes = await mergedPdf.save();
+  const path = `./documents/${dir}/`;
+  fs.mkdirSync(path, { recursive: true });
+  fs.writeFileSync(`./documents/${dir}/${dir}.pdf`, mergedPdfBytes);
+  return mergedPdfBytes;
 };

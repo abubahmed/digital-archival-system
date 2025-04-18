@@ -1,101 +1,77 @@
-import dotenv from "dotenv";
-import { captureArticle } from "../util/fetch_data.mjs";
-import { mergePDFBuffers, formatTimestamp } from "../util/misc_helper.mjs";
-import { generateAltoFile, extractText, generateMetsFile } from "./../util/mets_alto_dp.mjs";
-import { putToS3, instantiateS3 } from "./../util/s3_helper.mjs";
+import { formatTimestamp, putToS3, instantiateS3 } from "../util/helper.mjs";
+import TimeDatabase from "../util/manage_db.mjs";
+import mailchimp from "@mailchimp/mailchimp_marketing";
 import log from "./../util/logger.mjs";
-import puppeteer from "puppeteer";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-export const newsLetterHandler = async ({ event, callback, context }) => {
+export const newsletterHandler = async ({ event, context, callback }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
-  if (event.webUrls.length === 0) throw new Error("No URLs provided in the event");
 
-  // Instantiate AWS S3 and Puppeteer client
+  const timeDatabase = new TimeDatabase("newsletter");
+  const latestTime = timeDatabase.getLatestTime();
+  const currentTime = new Date();
+  if ((currentTime - latestTime) / (1000 * 60 * 60 * 24) < 7) {
+    throw new Error("Latest time is less than 7 days old");
+  }
+
+  // Instantiate the AWS S3 client and fetch Instagram posts
   const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--disable-web-security", "--allow-insecure-localhost"],
-  });
-  log.info("Puppeteer client instantiated");
 
-  // Capture articles from the provided URLs
-  let startingPage = 1;
-  const articlesData = [];
-  for (const [index, url] of event.webUrls.entries()) {
-    const response = await captureArticle({
-      url: url,
-      browser: browser,
-      header: index === 0,
-      footer: index === event.webUrls.length - 1,
-      startingPage: startingPage,
+  const { newsletters: posts, latestTime: newestLatestTime } = await fetchNewsletters({ after: latestTime });
+  log.info(`${newsletters.length} newsletters fetched`);
+
+  // Iterate through each post and process it
+  let processedPosts = 0;
+  for (const post of posts) {
+    processedPosts++;
+    log.info(`Processing post ${processedPosts}/${posts.length}`);
+    const { id, archive_url, long_archive_url, create_time } = post;
+
+    // Define the S3 path and local path for storing the resultant media
+    const fileName = archive_url + formatTimestamp(create_time);
+    const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const s3Path = `newsletter/${sanitizedFileName}`;
+    const localPath = `./documents/${sanitizedFileName}`;
+
+    // Download the media (images or video) if local and create a PDF buffer
+    const mediaBufferResponse = await downloadImages({
+      imageUrls: images,
+      path: `${localPath}.pdf`,
+      post,
       downloadLocally: local,
     });
-    log.info(`Captured article: ${url}`);
-    articlesData.push(response);
-    startingPage += response.pages.length;
-  }
-  browser.close();
-
-  // Merge all captured articles into a single PDF buffer
-  const issueName = `dailyprincetonian_${formatTimestamp(new Date())}`;
-  const pdfBuffers = articlesData.map((article) => article.pdfBuffer);
-  const mergedPDFBuffer = await mergePDFBuffers({
-    buffers: pdfBuffers,
-    dir: issueName,
-  });
-  log.info("Merged PDF buffer created");
-
-  // Extract text from the merged PDF buffer and generate ALTO files
-  const pages = await extractText({ buffer: mergedPDFBuffer });
-  const altoBuffers = [];
-  for (const page of pages) {
-    const { altoBuffer, name } = generateAltoFile({
-      dir: issueName,
-      pageText: page.text,
-      pageId: page.number,
-      downloadLocally: local,
-    });
-    log.info(`ALTO file for page ${page.number} generated: ${name}`);
-    altoBuffers.push({ buffer: altoBuffer, name: name });
-  }
-
-  // Generate METS file from merged PDF buffer and ALTO files
-  const metsResponse = generateMetsFile({
-    articlesData,
-    altoBuffers: altoBuffers,
-    dir: issueName,
-    downloadLocally: local,
-  });
-  log.info("METS file generated");
-
-  // Upload the merged PDF buffer, METS file, and ALTO files to S3
-  await putToS3({
-    file: mergedPDFBuffer,
-    S3Client: s3Client,
-    bucketName,
-    path: `dailyprince/${issueName}/${issueName}.pdf`,
-  });
-  log.info(`Issue PDF uploaded to S3: ${issueName}.pdf`);
-
-  await putToS3({
-    file: metsResponse.buffer,
-    S3Client: s3Client,
-    bucketName,
-    path: `dailyprince/${issueName}/mets.xml`,
-  });
-  log.info(`METS file uploaded to S3: mets.xml`);
-
-  for (const altoBuffer of altoBuffers) {
     await putToS3({
-      file: altoBuffer.buffer,
+      file: mediaBufferResponse.buffer,
       S3Client: s3Client,
       bucketName,
-      path: `dailyprince/${issueName}/${altoBuffer.name}`,
+      path: `${s3Path}.pdf`,
     });
-    log.info(`ALTO file uploaded to S3: ${altoBuffer.name}`);
+  }
+};
+
+export const fetchNewsletters = async ({ after = new Date(0) }) => {
+  mailchimp.setConfig({
+    apiKey: process.env.MAILCHIMP_API_KEY,
+    server: "us7",
+  });
+  const response = await mailchimp.campaigns.list({
+    count: 100,
+    offset: 0,
+    since_create_time: after,
+    sort_field: "create_time",
+  })
+  const newsletters = response.campaigns.filter(
+    (newsletter) => newsletter.long_archive_url && newsletter.create_time
+      && newsletter.id && newsletter.archive_url
+  );
+  if (newsletters.length === 0) throw new Error("No newsletters found after the specified date");
+  const latestTime = new Date(newsletters[newsletters.length - 1].create_time)
+  return {
+    newsletters,
+    latestTime,
   }
 };

@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.mjs",
-    "test": "node index.test.mjs",
+    "test": "node index.test.mjs"
   },
   "_moduleAliases": {
     "@": "./"
