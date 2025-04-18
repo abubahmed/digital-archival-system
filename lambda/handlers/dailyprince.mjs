@@ -1,8 +1,7 @@
 import dotenv from "dotenv";
 import { captureArticle } from "../util/fetch_data.mjs";
-import { mergePDFBuffers, instantiateS3 } from "../util/misc_helper.mjs";
+import { mergePDFBuffers, formatTimestamp } from "../util/misc_helper.mjs";
 import { generateAltoFile, extractText, generateMetsFile } from "./../util/mets_alto_dp.mjs";
-import { formatTimestamp } from "../util/misc_helper.mjs";
 import { putToS3, instantiateS3 } from "./../util/s3_helper.mjs";
 import log from "./../util/logger.mjs";
 import puppeteer from "puppeteer";

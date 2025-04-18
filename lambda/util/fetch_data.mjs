@@ -1,10 +1,25 @@
 import { ApifyClient } from "apify-client";
 import { formatTimestamp } from "./misc_helper.mjs";
 import { PDFDocument } from "pdf-lib";
+import mailchimp from "@mailchimp/mailchimp_marketing";
 import log from "./logger.mjs";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+export const fetchNewsletters = async ({ id = null }) => {
+  mailchimp.setConfig({
+    apiKey: process.env.MAILCHIMP_API_KEY,
+    server: "us7",
+  });
+  let response;
+  if (!id) {
+    response = await mailchimp.campaigns.list();
+  } else {
+    response = await mailchimp.campaigns.get(id);
+  }
+  console.log(response);
+};
 
 export const getArticlesFromMonth = async ({ month, year }) => {
   const yesterday = new Date();

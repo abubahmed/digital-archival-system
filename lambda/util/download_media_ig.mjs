@@ -3,7 +3,7 @@ import fs from "fs";
 import { PassThrough } from "stream";
 import PDFDocument from "pdfkit";
 import sizeOf from "image-size";
-import { addMetadataPage } from "./fetch_data.mjs";
+import { addMetadataPage } from "./misc_helper.mjs";
 
 export const downloadImages = async ({ imageUrls, path, post, downloadLocally = false }) => {
   const doc = new PDFDocument({ autoFirstPage: false });
