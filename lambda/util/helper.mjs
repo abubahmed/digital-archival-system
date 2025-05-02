@@ -5,49 +5,46 @@ import { S3Client } from "@aws-sdk/client-s3";
 dotenv.config();
 
 export const formatTimestamp = (timestamp) => {
-  const timestampDate = new Date(timestamp);
-  const year = timestampDate.getFullYear();
-  const month = String(timestampDate.getMonth() + 1).padStart(2, "0");
-  const day = String(timestampDate.getDate()).padStart(2, "0");
-  const hours = String(timestampDate.getHours()).padStart(2, "0");
-  const minutes = String(timestampDate.getMinutes()).padStart(2, "0");
-  const seconds = String(timestampDate.getSeconds()).padStart(2, "0");
-  const timestampDateFormatted = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
-  return timestampDateFormatted;
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
 };
 
 export const beautifyTimestamp = (timestamp) => {
-  const beautifiedTimestamp = new String(timestamp)
-    .replace(/_/g, " ")
-    .replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/, (match, p1, p2, p3, p4, p5, p6) => {
-      const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-      ];
-      const hour = parseInt(p4);
-      const suffix = hour >= 12 ? "PM" : "AM";
-      const formattedTime = `${p4}:${p5}:${p6} ${suffix}`;
-      return `${months[parseInt(p2) - 1]} ${p3}, ${p1} at ${formattedTime}`;
-    });
-  return beautifiedTimestamp;
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const year = date.getFullYear();
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${month} ${day}, ${year} at ${hour12}:${minutes}:${seconds} ${suffix}`;
 };
 
-export const sanitizeText = (text) => {
-  let stringText = String(text);
-  stringText = stringText.trim().replace(/\s+/g, " ");
-  stringText = stringText.replace(/[^ -~]/g, "");
-  return stringText;
+export const sanitizeFileName = (text, maxLength = 255) => {
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, maxLength);
 };
+
 
 export const instantiateS3 = () => {
   const client = new S3Client({

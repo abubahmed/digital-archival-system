@@ -1,5 +1,4 @@
 import { formatTimestamp, putToS3, instantiateS3 } from "../util/helper.mjs";
-import { PDFDocument } from "pdf-lib";
 import fs from "fs";
 import path from "path";
 import TimeDatabase from "../util/manage_db.mjs";
@@ -13,7 +12,6 @@ dotenv.config();
 export const newsletterHandler = async ({ event, context, callback }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
-
   const timeDatabase = new TimeDatabase("newsletter");
   const latestTime = timeDatabase.getLatestTime();
   const currentTime = new Date();
@@ -40,9 +38,7 @@ export const newsletterHandler = async ({ event, context, callback }) => {
     processedPosts++;
     log.info(`Processing post ${processedPosts}/${posts.length}`);
     const { long_archive_url, create_time } = post;
-    const sanitizedWebUrl = long_archive_url.replace(/[^a-z0-9]/gi, "_").toLowerCase()
-    const formattedTimestamp = formatTimestamp(create_time);
-    const fileName = `${sanitizedWebUrl}_${formattedTimestamp}.pdf`;
+    const fileName = `${sanitizeFileName(long_archive_url)}_${formatTimestamp(create_time)}.pdf`;
 
     const pdfBuffer = await captureNewsletter({
       url: long_archive_url,

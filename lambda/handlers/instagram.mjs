@@ -1,4 +1,4 @@
-import { putToS3, instantiateS3, formatTimestamp } from "./../util/helper.mjs";
+import { putToS3, instantiateS3, formatTimestamp, beautifyTimestamp, sanitizeFileName } from "./../util/helper.mjs";
 import { ApifyClient } from "apify-client";
 import TimeDatabase from "../util/manage_db.mjs";
 import log from "./../util/logger.mjs";
@@ -14,7 +14,6 @@ dotenv.config();
 export const instagramHandler = async ({ event, context, callback }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
-
   const timeDatabase = new TimeDatabase("instagram");
   const latestTime = timeDatabase.getLatestTime();
   const currentTime = new Date();
@@ -26,7 +25,7 @@ export const instagramHandler = async ({ event, context, callback }) => {
   const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
   addTime();
-  const posts = await fetchInstagramPosts({ after: latestTimeISO });
+  const posts = await fetchInstagramPosts({ after: latestTime });
   log.info(`${posts.length} Instagram posts fetched`);
 
   // Iterate through each post and process it
@@ -34,17 +33,10 @@ export const instagramHandler = async ({ event, context, callback }) => {
   for (const post of posts) {
     processedPosts++;
     log.info(`Processing post ${processedPosts}/${posts.length}`);
-    const { images, videoUrl, type, timestamp, url, postId } = post;
-    if (((!images || images.length === 0) && !videoUrl) || !timestamp || !type || !url || !postId) {
-      log.error("Missing required data (image(s), video URL, or post metadata)");
-      continue;
-    }
-
-    // Define the S3 path and local path for storing the resultant media
-    const fileName = url + formatTimestamp(timestamp);
-    const sanitizedFileName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const s3Path = `instagram/${sanitizedFileName}`;
-    const localPath = `./documents/${sanitizedFileName}`;
+    const { images, videoUrl, type, timestamp, url } = post;
+    const fileName = `${sanitizeFileName(url)}_${formatTimestamp(timestamp)}.pdf`;
+    const s3Path = `instagram/${fileName}`;
+    const localPath = `./documents/${fileName}`;  
 
     // Download the media (images or video) if local and create a PDF buffer
     if (type === "video") {
@@ -55,7 +47,6 @@ export const instagramHandler = async ({ event, context, callback }) => {
         post,
         downloadLocally: local,
       });
-
       await putToS3({
         file: mediaBufferResponse.videoBuffer,
         S3Client: s3Client,
@@ -91,7 +82,6 @@ const fetchInstagramPosts = async ({ after }) => {
   const client = new ApifyClient({
     token: process.env.APIFY_TOKEN,
   });
-  log.info("Apify client created");
   const instagramAccount = "dailyprincetonian";
   const resultsLimit = 5;
 
@@ -150,7 +140,6 @@ const fetchInstagramPosts = async ({ after }) => {
   return posts;
 };
 
-
 const downloadImagesInstagram = async ({ imageUrls, path, post, downloadLocally = false }) => {
   const doc = new PDFDocument({ autoFirstPage: false });
   const pdfPassThrough = new PassThrough();
@@ -183,7 +172,6 @@ const downloadImagesInstagram = async ({ imageUrls, path, post, downloadLocally 
   }
   return buffer;
 };
-
 
 export const downloadVideoInstagram = async ({ videoUrl, videoPath, metadataPath, post, downloadLocally = false }) => {
   const response = await axios({
