@@ -1,6 +1,7 @@
 import { instagramHandler } from "./handlers/instagram.mjs";
 import { dailyPrinceHandler } from "./handlers/dailyprince.mjs";
 import { newsletterHandler } from "./handlers/newsletter.mjs";
+import { createTodaysArchive } from "./util/daily_run.mjs";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,6 +11,9 @@ export const handler = async (event, context, callback) => {
 
   const archiveType = process.env.ARCHIVE_TYPE;
   switch (archiveType) {
+    case "cron":
+      await createTodaysArchive({ event, context, callback });
+      break;
     case "instagram":
       await instagramHandler({ event, context, callback });
       break;

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mets:mets xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <mets:metsHdr CREATEDATE="2025-07-20T22:24:06.770Z">
+    <mets:agent ROLE="CREATOR" TYPE="ORGANIZATION">
+      <mets:name>Automated Articles Issue Archiver</mets:name>
+    </mets:agent>
+  </mets:metsHdr>
+  <mets:fileSec>
+    <mets:fileGrp USE="PDF">
+      <mets:file ID="full_pdf" MIMETYPE="application/pdf">
+        <mets:FLocat xlink:href="dailyprince-issue_2025-07-20_18-24-06.pdf"/>
+      </mets:file>
+    </mets:fileGrp>
+    <mets:fileGrp USE="ALTO">
+      <mets:file ID="alto_1" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_1.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_2" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_2.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_3" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_3.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_4" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_4.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_5" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_5.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_6" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_6.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_7" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_7.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_8" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_8.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_9" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_9.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_10" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_10.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_11" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_11.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_12" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_12.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_13" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_13.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_14" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_14.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_15" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_15.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_16" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_16.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_17" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_17.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_18" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_18.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_19" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_19.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_20" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_20.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_21" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_21.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_22" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_22.alto.xml"/>
+      </mets:file>
+      <mets:file ID="alto_23" MIMETYPE="text/xml">
+        <mets:FLocat xlink:href="page_23.alto.xml"/>
+      </mets:file>
+    </mets:fileGrp>
+  </mets:fileSec>
+  <mets:structMap TYPE="logical">
+    <mets:div TYPE="article" LABEL="Allowing YAT candidates to campaign is essential to preserving Princeton's values">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/64ae1693-23b4-4574-b7b3-10d8a36c2de1"/>
+      <mets:div TYPE="page" LABEL="Page 1">
+        <mets:fptr FILEID="alto_1"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 2">
+        <mets:fptr FILEID="alto_2"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 3">
+        <mets:fptr FILEID="alto_3"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="Newsletter">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/83a90ce9-3c26-45f0-80e0-349d75affc6c"/>
+      <mets:div TYPE="page" LABEL="Page 4">
+        <mets:fptr FILEID="alto_4"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 5">
+        <mets:fptr FILEID="alto_5"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 6">
+        <mets:fptr FILEID="alto_6"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 7">
+        <mets:fptr FILEID="alto_7"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 8">
+        <mets:fptr FILEID="alto_8"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 9">
+        <mets:fptr FILEID="alto_9"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 10">
+        <mets:fptr FILEID="alto_10"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="‘She’s such a builder:’ Kauanui appointed to Indigenous Studies professorship">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/5f00c249-d5a2-4544-a155-72f24906939b"/>
+      <mets:div TYPE="page" LABEL="Page 11">
+        <mets:fptr FILEID="alto_11"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 12">
+        <mets:fptr FILEID="alto_12"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 13">
+        <mets:fptr FILEID="alto_13"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="My favorite places to get espresso in Princeton">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/091b39e5-9a60-4562-8dc6-06eb2cfd4cb9"/>
+      <mets:div TYPE="page" LABEL="Page 14">
+        <mets:fptr FILEID="alto_14"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 15">
+        <mets:fptr FILEID="alto_15"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/2483b510-d625-4348-8f3d-e4932cb1d7ca"/>
+      <mets:div TYPE="page" LABEL="Page 16">
+        <mets:fptr FILEID="alto_16"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 17">
+        <mets:fptr FILEID="alto_17"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="Living with disordered eating at Princeton">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/6463bff3-9398-4a2a-bcdf-265d4c77263e"/>
+      <mets:div TYPE="page" LABEL="Page 18">
+        <mets:fptr FILEID="alto_18"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 19">
+        <mets:fptr FILEID="alto_19"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 20">
+        <mets:fptr FILEID="alto_20"/>
+      </mets:div>
+    </mets:div>
+    <mets:div TYPE="article" LABEL="Crossword Solutions: April 12">
+      <mets:mptr xlink:href="https://www.dailyprincetonian.com/c88090f3-f4aa-428f-8b59-e1d9fae78ad2"/>
+      <mets:div TYPE="page" LABEL="Page 21">
+        <mets:fptr FILEID="alto_21"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 22">
+        <mets:fptr FILEID="alto_22"/>
+      </mets:div>
+      <mets:div TYPE="page" LABEL="Page 23">
+        <mets:fptr FILEID="alto_23"/>
+      </mets:div>
+    </mets:div>
+  </mets:structMap>
+</mets:mets>

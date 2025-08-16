@@ -1,16 +1,22 @@
 import dotenv from "dotenv";
-import { generateAltoFile, extractText, generateMetsFile } from "./../util/mets_alto_dp.mjs";
+import {
+  generateAltoFile,
+  extractText,
+  generateMetsFile,
+} from "./../util/mets_alto_dp.mjs";
 import { putToS3, instantiateS3, formatTimestamp } from "./../util/helper.mjs";
 import { PDFDocument } from "pdf-lib";
 import log from "./../util/logger.mjs";
 import puppeteer from "puppeteer";
+import fs from "fs";
 
 dotenv.config();
 
 export const dailyPrinceHandler = async ({ event, callback, context }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
-  if (event.webUrls.length === 0) throw new Error("No URLs provided in the event");
+  if (event.webUrls.length === 0)
+    throw new Error("No URLs provided in the event");
 
   // Instantiate AWS S3 and Puppeteer client
   const s3Client = instantiateS3();
@@ -70,7 +76,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   });
   log.info("METS file generated");
 
-  // Upload the merged PDF buffer, METS file, and ALTO files to S3 
+  // Upload the merged PDF buffer, METS file, and ALTO files to S3
   await putToS3({
     file: mergedPDFBuffer,
     S3Client: s3Client,
@@ -98,7 +104,13 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   }
 };
 
-const captureArticle = async ({ url, browser, header, footer, startingPage }) => {
+const captureArticle = async ({
+  url,
+  browser,
+  header,
+  footer,
+  startingPage,
+}) => {
   let page;
   page = await browser.newPage();
   const domain = new URL(url).host;
@@ -127,9 +139,14 @@ const captureArticle = async ({ url, browser, header, footer, startingPage }) =>
       targetItems.forEach((item) => item.remove());
     },
     header,
-    footer
+    footer,
   );
   const articleTitle = await page.evaluate(() => {
+    const hostname = new URL(document.URL).hostname;
+    console.log(hostname);
+    if (hostname === "mailchi.mp") {
+      return "Newsletter";
+    }
     const h1Element = document.querySelector(".article h1");
     return h1Element ? h1Element.textContent : null;
   });
@@ -142,6 +159,12 @@ const captureArticle = async ({ url, browser, header, footer, startingPage }) =>
         @page :first {
           margin-top: 0.5in;
           margin-bottom: 1in;
+        }
+
+        /* For daily newsletter scraping */
+        /* (yes, it's actually called this.) */
+        #awesomebar {
+          display: none;
         }
       `,
   });
@@ -170,7 +193,7 @@ const captureArticle = async ({ url, browser, header, footer, startingPage }) =>
   };
 };
 
-const mergePDFBuffers = async ({ buffers, dir }) => {
+export const mergePDFBuffers = async ({ buffers, dir }) => {
   const mergedPdf = await PDFDocument.create();
   for (const buffer of buffers) {
     const pdf = await PDFDocument.load(buffer);
