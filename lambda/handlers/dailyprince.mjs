@@ -9,14 +9,28 @@ import { PDFDocument } from "pdf-lib";
 import log from "./../util/logger.mjs";
 import puppeteer from "puppeteer";
 import fs from "fs";
+import path from "node:path";
+
 
 dotenv.config();
 
 export const dailyPrinceHandler = async ({ event, callback, context }) => {
   const local = process.env.LOCAL;
   const bucketName = process.env.AWS_BUCKET_NAME;
-  if (event.webUrls.length === 0)
-    throw new Error("No URLs provided in the event");
+
+  // Use articles only (url + optional title/content)
+  const { articles = [] } = event || {};
+  if (!Array.isArray(articles) || articles.length === 0) {
+    throw new Error("No articles provided in the event");
+  }
+
+  // Filter out any malformed entries (missing url), but keep order
+  const validArticles = articles.filter(a => a && typeof a.url === "string" && a.url.length > 0);
+  if (validArticles.length === 0) {
+    throw new Error("No valid article URLs provided");
+  }
+  if (validArticles.length !== articles.length) {
+    log.warn(`Some articles were skipped due to missing/invalid url`);  }
 
   // Instantiate AWS S3 and Puppeteer client
   const s3Client = instantiateS3();
@@ -27,33 +41,39 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   });
   log.info("Puppeteer client instantiated");
 
-  // Capture articles from the provided URLs
+  // Capture articles from the provided list
   let startingPage = 1;
   const articlesData = [];
-  for (const [index, url] of event.webUrls.entries()) {
+  for (const [index, art] of validArticles.entries()) {
     const response = await captureArticle({
-      url: url,
-      browser: browser,
+      url: art.url,
+      browser,
       header: index === 0,
-      footer: index === event.webUrls.length - 1,
-      startingPage: startingPage,
+      footer: index === validArticles.length - 1,
+      startingPage,
+      // pass through metadata (optional)
+      title: art.title,
+      content: art.content,
     });
-    log.info(`Captured article: ${url}`);
+    log.info(`Captured article: ${art.url}`);
     articlesData.push(response);
     startingPage += response.pages.length;
   }
-  browser.close();
+  await browser.close();
 
   // Merge all captured articles into a single PDF buffer
   const issueName = `dailyprincetonian_${formatTimestamp(new Date())}`;
   const pdfBuffers = articlesData.map((article) => article.pdfBuffer);
-  const mergedPDFBuffer = await mergePDFBuffers({
+  const { mergedPdfBytes, pdfPath, imagesDir, pages } = await mergePDFBuffers({
     buffers: pdfBuffers,
     dir: issueName,
+    dpi: 400,
+    quality: 90,
   });
   log.info("Merged PDF buffer created");
 
   // Extract text from the merged PDF buffer and generate ALTO files
+  /*
   const pages = await extractText({ buffer: mergedPDFBuffer });
   const altoBuffers = [];
   for (const page of pages) {
@@ -66,16 +86,18 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     log.info(`ALTO file for page ${page.number} generated: ${name}`);
     altoBuffers.push({ buffer: altoBuffer, name: name });
   }
+  */
 
   // Generate METS file from merged PDF buffer and ALTO files
   const metsResponse = generateMetsFile({
     articlesData,
-    altoBuffers: altoBuffers,
+    issueDate: event.today,
     dir: issueName,
     downloadLocally: local,
   });
   log.info("METS file generated");
 
+  /*
   // Upload the merged PDF buffer, METS file, and ALTO files to S3
   await putToS3({
     file: mergedPDFBuffer,
@@ -102,6 +124,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     });
     log.info(`ALTO file uploaded to S3: ${altoBuffer.name}`);
   }
+  */
 };
 
 const captureArticle = async ({
@@ -110,6 +133,8 @@ const captureArticle = async ({
   header,
   footer,
   startingPage,
+  title,
+  content,
 }) => {
   let page;
   page = await browser.newPage();
@@ -141,15 +166,6 @@ const captureArticle = async ({
     header,
     footer,
   );
-  const articleTitle = await page.evaluate(() => {
-    const hostname = new URL(document.URL).hostname;
-    console.log(hostname);
-    if (hostname === "mailchi.mp") {
-      return "Newsletter";
-    }
-    const h1Element = document.querySelector(".article h1");
-    return h1Element ? h1Element.textContent : null;
-  });
 
   await page.addStyleTag({
     content: `
@@ -187,22 +203,36 @@ const captureArticle = async ({
 
   return {
     pdfBuffer,
-    title: articleTitle,
     pages: pages,
     url,
+    title,
+    content,
   };
 };
 
-export const mergePDFBuffers = async ({ buffers, dir }) => {
+export const mergePDFBuffers = async ({ buffers, dir, dpi = 400, quality = 90 }) => {
   const mergedPdf = await PDFDocument.create();
   for (const buffer of buffers) {
     const pdf = await PDFDocument.load(buffer);
     const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-    copiedPages.forEach((page) => mergedPdf.addPage(page));
+    copiedPages.forEach((p) => mergedPdf.addPage(p));
   }
   const mergedPdfBytes = await mergedPdf.save();
-  const path = `./documents/${dir}/`;
-  fs.mkdirSync(path, { recursive: true });
-  fs.writeFileSync(`./documents/${dir}/${dir}.pdf`, mergedPdfBytes);
-  return mergedPdfBytes;
+
+  const baseDir = path.resolve(process.cwd(), "documents", dir);
+  const pdfPath = path.join(baseDir, `${dir}.pdf`);
+  const imgOutDir = path.join(baseDir, "images");
+  fs.mkdirSync(baseDir, { recursive: true });
+  fs.writeFileSync(pdfPath, mergedPdfBytes);
+
+  /*
+  const pages = await pdfToJpegs({
+    pdfPath,
+    outDir: imgOutDir,
+    dpi,
+    quality,
+  });
+  */
+
+  return { mergedPdfBytes, pdfPath, imagesDir: imgOutDir};
 };

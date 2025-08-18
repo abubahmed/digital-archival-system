@@ -30,6 +30,14 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
   const tomordate = tomorrow.getDate().toString();
   const tomoryear = tomorrow.getFullYear().toString();
 
+  // --- Minimal helper: naive HTML -> plain text
+  function stripHtml(html = "") {
+    return html
+      .replace(/<[^>]*>/g, " ")   // drop all tags
+      .replace(/\s+/g, " ")       // collapse whitespace
+      .trim();
+  }
+
   // Function to fetch a specific page
   async function fetchPage(pageNum) {
     const apiUrl = `https://www.dailyprincetonian.com/search.json?a=1&s=&ti=&ts_month=${yestermonth}&ts_day=${yesterdate}&ts_year=${yesteryear}&te_month=${tomormonth}&te_day=${tomordate}&te_year=${tomoryear}&au=&tg=&ty=article&o=date&page=${pageNum}`;
@@ -54,20 +62,18 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
   let allItems = [...firstPageJson.items];
   
   // Fetch remaining pages
-  for(let page = 2; page <= totalPages; page++) {
+  for (let page = 2; page <= totalPages; page++) {
     const pageJson = await fetchPage(page);
     allItems = [...allItems, ...pageJson.items];
   }
 
   let regularUrls = [];
-  let promoUrls = [];
   let regularTagCounts = {};
   
   allItems.forEach((item) => {
     // Check if item has metadata and if any metadata has label "promo_url"
     const hasPromoUrl = item.metadata && item.metadata.some(meta => meta.label === "promo_url");
     const url = `https://www.dailyprincetonian.com/${item["uuid"]}`;
-    
     const published = new Date(item.published_at);
 
     // Only count tags for regular articles
@@ -76,15 +82,16 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
         regularTagCounts[tag.name] = (regularTagCounts[tag.name] || 0) + 1;
       });
     }
-    if (published >= yesterday && published < today) {
-      if (!hasPromoUrl) {
-        regularUrls.push({ url, headline: item.headline, tags: item.tags });
-      } else {
-        promoUrls.push({ url, headline: item.headline, tags: item.tags });
-      }
-    }
-    else{
 
+    if (published >= yesterday && published < today) {
+      // Grab headline and plain-text content (naive strip)
+      const headline = item.headline;
+      const contentHtml = item.content || item.body || "";
+      const content = stripHtml(contentHtml);
+
+      if (!hasPromoUrl) {
+        regularUrls.push({ url, headline, tags: item.tags, content });
+      }
     }
   });
 
@@ -120,7 +127,7 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
     }
   });
 
-  // Create ordered list of URLs
+  // Create ordered list including title + content
   let orderedUrls = [];
   
   // Add articles in priority order
@@ -131,7 +138,8 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
         orderedUrls.push({
           url: item.url,
           category: category,
-          headline: item.headline
+          headline: item.headline,
+          content: item.content
         });
       });
     }
@@ -143,18 +151,20 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
     console.log(`${index + 1}. [${item.category}] ${item.url}`);
   });
 
-  if (promoUrls.length > 0) {
-    console.log('\nFiltered Promo URLs:');
-    promoUrls.forEach(item => console.log(item.url));
-  }
-
-  console.log(`\nTotal: ${orderedUrls.length} articles (${promoUrls.length} promos filtered)`);
-  
   // Set up for handler use
   regularUrls = orderedUrls;
   
-  // Commented out handler
-  dailyPrinceHandler({ event: { webUrls: orderedUrls.map(item => item.url) } });
+  // Pass URLs (back-compat) AND structured articles with title + content
+  dailyPrinceHandler({ 
+    event: { 
+      today,
+      articles: orderedUrls.map(({ url, headline, content }) => ({
+        url,
+        title: headline,
+        content
+      }))
+    } 
+  });
 };
 
 createTodaysArchive({});
