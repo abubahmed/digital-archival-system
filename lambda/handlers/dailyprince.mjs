@@ -10,6 +10,8 @@ import log from "./../util/logger.mjs";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { mkdir } from "node:fs/promises";
 
 
 dotenv.config();
@@ -225,14 +227,51 @@ export const mergePDFBuffers = async ({ buffers, dir, dpi = 400, quality = 90 })
   fs.mkdirSync(baseDir, { recursive: true });
   fs.writeFileSync(pdfPath, mergedPdfBytes);
 
-  /*
+  
   const pages = await pdfToJpegs({
     pdfPath,
     outDir: imgOutDir,
     dpi,
     quality,
   });
-  */
 
-  return { mergedPdfBytes, pdfPath, imagesDir: imgOutDir};
+  return { mergedPdfBytes, pdfPath, imagesDir: imgOutDir, pages};
 };
+
+export async function pdfToJpegs({
+  pdfPath,
+  outDir,
+  dpi = 300,
+  quality = 35,
+}) {
+  if (!pdfPath) throw new Error("pdfToJpegs: pdfPath is required");
+  if (!outDir) throw new Error("pdfToJpegs: outDir is required");
+
+  await mkdir(outDir, { recursive: true });
+  const outPattern = path.join(outDir, "page-%04d.jp2");
+
+  // magick -density <dpi> input.pdf -background white -alpha remove -quality <q> out/page-%04d.jp2
+  await new Promise((resolve, reject) => {
+    execFile(
+      "magick",
+      [
+        "-density", String(dpi),
+        pdfPath,
+        "-background", "white",
+        "-alpha", "remove",
+        "-quality", String(quality),
+        outPattern,
+      ],
+      (err) => (err ? reject(err) : resolve())
+    );
+  });
+
+  // Return the list of files we just wrote
+  const files = fs
+    .readdirSync(outDir)
+    .filter((f) => f.toLowerCase().endsWith(".jp2"))
+    .map((f) => path.join(outDir, f))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  return files;
+}
