@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mets:mets xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:mix="http://www.loc.gov/mix/" xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd" TYPE="Newspaper" LABEL="The Daily Princetonian 11.04.2023">
+  <mets:metsHdr CREATEDATE="2025-08-18T05:56:52.043Z" LASTMODDATE="2025-08-18T05:56:52.043Z" RECORDSTATUS="complete">
+    <mets:agent ROLE="CREATOR" TYPE="OTHER" OTHERTYPE="SOFTWARE">
+      <mets:name>Automated Articles Issue Archiver</mets:name>
+      <mets:note>Version 1.0.0</mets:note>
+    </mets:agent>
+  </mets:metsHdr>
+  <mets:dmdSec ID="ISSUE_DESCRIPTION">
+    <mets:mdWrap MDTYPE="MODS">
+      <mets:xmlData>
+        <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="MODSMD_ISSUE1_TI1">
+          <mods:titleInfo ID="MODSMD_PRINT_TI1">
+            <mods:nonSort>The</mods:nonSort>
+            <mods:title>Daily Princetonian</mods:title>
+          </mods:titleInfo>
+          <mods:part type="issue">
+            <mods:text>Vol. CXLVII, No. 1 (Apr 11, 2023)</mods:text>
+            <mods:date encoding="iso8601">2023-04-11</mods:date>
+            <mods:detail type="volume" level="1">
+              <mods:number>147</mods:number>
+            </mods:detail>
+            <mods:detail type="number" level="2">
+              <mods:number>1</mods:number>
+            </mods:detail>
+          </mods:part>
+          <mods:relatedItem type="host">
+            <mods:titleInfo>
+              <mods:nonSort>The</mods:nonSort>
+              <mods:title>Daily Princetonian</mods:title>
+            </mods:titleInfo>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE1">
+            <mods:titleInfo>
+              <mods:title>Five artifacts linked to alum under investigation for art smuggling will remain at University Art Museum </mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>1</mods:start>
+                <mods:end>3</mods:end>
+                <mods:list>p. 1 - 3</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE2">
+            <mods:titleInfo>
+              <mods:title>Remembering musician, athlete, activist Paul Robeson on his 125th birthday</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>4</mods:start>
+                <mods:end>8</mods:end>
+                <mods:list>p. 4 - 8</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE3">
+            <mods:titleInfo>
+              <mods:title>Many mental health report goals on track, show decreasing CPS wait times </mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>9</mods:start>
+                <mods:end>11</mods:end>
+                <mods:list>p. 9 - 11</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE4">
+            <mods:titleInfo>
+              <mods:title>Rejection is common at Princeton – and that’s a good thing</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>12</mods:start>
+                <mods:end>13</mods:end>
+                <mods:list>p. 12 - 13</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE5">
+            <mods:titleInfo>
+              <mods:title>​​Abby Meyers ’22 selected first round, 11th overall in 2023 WNBA draft</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>14</mods:start>
+                <mods:end>15</mods:end>
+                <mods:list>p. 14 - 15</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE6">
+            <mods:titleInfo>
+              <mods:title>Laundenslager leads softball to three-game sweep against Columbia</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>16</mods:start>
+                <mods:end>18</mods:end>
+                <mods:list>p. 16 - 18</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE7">
+            <mods:titleInfo>
+              <mods:title>Baseball wins one of three against UPenn behind Chmielewski gem</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>19</mods:start>
+                <mods:end>20</mods:end>
+                <mods:list>p. 19 - 20</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE8">
+            <mods:titleInfo>
+              <mods:title>Crossword Solutions: April 11</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>21</mods:start>
+                <mods:end>23</mods:end>
+                <mods:list>p. 21 - 23</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+        </mods:mods>
+      </mets:xmlData>
+    </mets:mdWrap>
+  </mets:dmdSec>
+</mets:mets>
