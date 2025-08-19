@@ -3,39 +3,262 @@ import fs from "fs";
 import xml2js from "xml2js";
 import { formatTimestamp } from "./helper.mjs";
 
-export const generateAltoFile = ({ pageText, pageId, dir, downloadLocally = false }) => {
+export const generateAltoFile = ({
+  pageText,
+  pageId,
+  dir,
+  downloadLocally = true,
+  pageWidth = 2550,
+  pageHeight = 3300,
+  measurementUnit = "pixel",
+  sourceImage = `page_${pageId}.jpg`,
+  schema = "v4", // "v4" (default) or "docworks14"
+}) => {
+  const haveText = !!(pageText && pageText.trim());
+
+  // --- Root attrs per schema selection ---
+  const rootAttrs =
+    schema === "docworks14"
+      ? {
+          // docWorks 1.4-style header
+          "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "xsi:noNamespaceSchemaLocation":
+            "http://schema.ccs-gmbh.com/docworks/alto-1-4.xsd",
+          "xmlns:xlink": "http://www.w3.org/1999/xlink",
+          // Keep a default namespace even in 1.4 style (empty/no-namespace is common there;
+          // most parsers will still accept a default v4 ns omitted. If you want *strict*
+          // docWorks behavior, you can omit `xmlns` entirely.)
+        }
+      : {
+          // ALTO v4-style header (Library of Congress)
+          xmlns: "http://www.loc.gov/standards/alto/ns-v4#",
+          "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "xsi:schemaLocation":
+            "http://www.loc.gov/standards/alto/ns-v4# http://www.loc.gov/standards/alto/v4/alto-4-2.xsd",
+          "xmlns:xlink": "http://www.w3.org/1999/xlink",
+        };
+
+  // --- Core structure ---
   const altoObject = {
-    "alto:alto": {
-      $: {
-        "xmlns:alto": "http://www.loc.gov/standards/alto/ns-v4#",
+    alto: {
+      $: rootAttrs,
+      Description: {
+        MeasurementUnit: measurementUnit, // "pixel" | "inch" | "millimeter"
+        sourceImageInformation: { fileName: sourceImage },
       },
-      "alto:Layout": {
-        "alto:Page": {
+      Layout: {
+        Page: {
           $: {
             ID: `page_${pageId}`,
+            PHYSICAL_IMG_NR: String(pageId),
+            WIDTH: String(pageWidth),
+            HEIGHT: String(pageHeight),
           },
-          "alto:TextBlock": {
-            "alto:String": {
-              _: pageText,
+          PrintSpace: {
+            $: {
+              HPOS: "0",
+              VPOS: "0",
+              WIDTH: String(pageWidth),
+              HEIGHT: String(pageHeight),
             },
+            // Only include text structure if we actually have text
+            ...(haveText && {
+              TextBlock: {
+                $: {
+                  ID: `tb_${pageId}_1`,
+                  HPOS: "100",
+                  VPOS: "100",
+                  WIDTH: String(pageWidth - 200),
+                  HEIGHT: "200",
+                },
+                TextLine: {
+                  $: {
+                    ID: `tl_${pageId}_1`,
+                    HPOS: "110",
+                    VPOS: "120",
+                    WIDTH: String(pageWidth - 220),
+                    HEIGHT: "40",
+                    BASELINE: "150",
+                  },
+                  String: {
+                    $: {
+                      ID: `str_${pageId}_1`,
+                      CONTENT: pageText.trim(),
+                      HPOS: "110",
+                      VPOS: "120",
+                      WIDTH: String(pageWidth - 220),
+                      HEIGHT: "40",
+                    },
+                  },
+                },
+              },
+            }),
           },
         },
       },
     },
   };
 
-  const builder = new xml2js.Builder();
+  const builder = new xml2js.Builder({
+    headless: false,
+    xmldec: { version: "1.0", encoding: "UTF-8" },
+    renderOpts: { pretty: true },
+  });
+
   const altoXML = builder.buildObject(altoObject);
+  const altoBuffer = Buffer.from(altoXML, "utf-8");
+
   if (downloadLocally && dir) {
     const path = `./documents/${dir}/`;
     fs.mkdirSync(path, { recursive: true });
     fs.writeFileSync(path + `alto_${pageId}.xml`, altoXML);
   }
-  return {
-    altoBuffer: altoXML,
-    name: `alto_${pageId}.xml`,
-  };
+
+  return { altoBuffer, name: `alto_${pageId}.xml` };
 };
+
+// --- helper: normalize an image entry (string -> { href }) ---
+function normImg(entry) {
+  if (typeof entry === "string") return { href: entry };
+  return entry || {};
+}
+
+// --- build one <mets:techMD> for an image using MIX ---
+function buildImageTechMD(img, seq) {
+  const {
+    id,                 // optional explicit techMD ID
+    href,               // required (file path or URL)
+    mimetype = "image/jp2",
+    width,              // optional (px)
+    height,             // optional (px)
+    colorSpace,         // optional (e.g., "RGB", "Grayscale")
+    compressionScheme,  // optional (e.g., "JPEG")
+  } = img;
+
+  // Minimal, schema-friendly MIX structure
+  const mixNode = {
+    "mix:mix": {
+      "mix:BasicDigitalObjectInformation": {
+        "mix:FormatName": mimetype,
+      },
+      "mix:BasicImageInformation": {
+        "mix:BasicImageCharacteristics": {
+          ...(Number.isFinite(width) ? { "mix:ImageWidth": String(width) } : {}),
+          ...(Number.isFinite(height) ? { "mix:ImageHeight": String(height) } : {}),
+          ...(colorSpace ? { "mix:ColorSpace": colorSpace } : {}),
+        },
+      },
+      ...(compressionScheme
+        ? {
+            "mix:Compression": {
+              "mix:CompressionScheme": compressionScheme,
+            },
+          }
+        : {}),
+      "mix:ImageCaptureMetadata": {
+        "mix:GeneralCaptureInformation": {
+          "mix:SourceType": "digitalCameraOrScanner",
+        },
+      },
+    },
+  };
+
+  return {
+    "mets:techMD": {
+      $: { ID: id || `IMG_TECH_${seq}` },
+      "mets:mdWrap": {
+        $: { MDTYPE: "NISOIMG" },
+        "mets:xmlData": mixNode,
+      },
+    },
+  };
+}
+
+function makeIssueFileSec({ images = [], alto = [] }) {
+  const pickHref = (entry) => entry?.relHref || entry?.href || entry?.path;
+
+  const imgGrp = images.length
+    ? {
+        $: { ID: "IMGGRP", USE: "Images" },
+        "mets:file": images.map((img, i) => ({
+          $: {
+            ID: img.id || `IMG${String(i + 1).padStart(5, "0")}`,
+            MIMETYPE: img.mimetype || "image/jp2",
+            ...(img.amdId ? { ADMID: img.amdId } : {}),  // <-- link to amdSec
+          },
+          "mets:FLocat": {
+            $: {
+              LOCTYPE: "URL",
+              "xlink:href": pickHref(img),
+              "xmlns:xlink": "http://www.w3.org/1999/xlink",
+            },
+          },
+        })),
+      }
+    : null;
+
+  const altoGrp = alto.length
+    ? {
+        $: { ID: "ALTOGRP", USE: "Text" },
+        "mets:file": alto.map((a, i) => ({
+          $: {
+            ID: a.id || `ALTO${String(i + 1).padStart(5, "0")}`,
+            MIMETYPE: a.mimetype || "text/xml",
+            // Usually no ADMID for ALTO, unless you also build text techMD
+          },
+          "mets:FLocat": {
+            $: {
+              LOCTYPE: "URL",
+              "xlink:href": pickHref(a),
+              "xmlns:xlink": "http://www.w3.org/1999/xlink",
+            },
+          },
+        })),
+      }
+    : null;
+
+  const fileGrps = [imgGrp, altoGrp].filter(Boolean);
+  return fileGrps.length
+    ? { "mets:fileSec": { $: { xmlns: "http://www.loc.gov/METS/" }, "mets:fileGrp": fileGrps } }
+    : {};
+}
+
+
+// --- public: make <mets:amdSec> for images only ---
+// --- public: make multiple <mets:amdSec>, one per image ---
+function makeIssueAmdSec({ imageFiles = [] }) {
+  if (!imageFiles.length) return {};
+
+  const amdSecs = imageFiles.map((raw, idx) => {
+    const img = normImg(raw);               // normalize strings -> objects
+    const seq = idx + 1;
+
+    // IMGPARAM00001 / IMGPARAM00001TECHMD
+    const amdId = img.amdId || `IMGPARAM${String(seq).padStart(5, "0")}`;
+    const techId = `${amdId}TECHMD`;
+
+    // persist the amdId back to the original entry if it's an object
+    if (raw && typeof raw === "object") {
+      raw.amdId = amdId;
+    }
+    // also set on the normalized copy we’re using locally
+    img.amdId = amdId;
+
+    // build techMD
+    const techMDNode = buildImageTechMD(img, seq)["mets:techMD"];
+    techMDNode.$.ID = techId;
+
+    return {
+      "mets:amdSec": {
+        $: { ID: amdId, xmlns: "http://www.loc.gov/METS/" },
+        "mets:techMD": techMDNode,
+      },
+    };
+  });
+
+  // multiple <mets:amdSec> siblings
+  return { "mets:amdSec": amdSecs.map(x => x["mets:amdSec"]) };
+}
 
 function formatLabel(date) {
   const day = String(date.getDate()).padStart(2, "0");
@@ -203,19 +426,31 @@ export const generateMetsFile = ({
   articlesData, 
   issueDate, 
   dir, 
-  downloadLocally = true }) => {
-  
+  downloadLocally = true,
+  imageFiles,
+  altoFiles
+  }) => {
   
   const metsXmlObject = {
     "mets:mets": {
       $: buildRootAttrs({ issueDate }),
-      ...buildMetsHdr({ created: new Date(), agentName: "Automated Articles Issue Archiver", agentNote: "Version 1.0.0" }),
+      ...buildMetsHdr({
+        created: new Date(),
+        agentName: "Automated Articles Issue Archiver",
+        agentNote: "Version 1.0.0",
+      }),
       ...makeIssueDmdSec({
         issueDate,
         volumeNumber: 147,
         issueNumber: 1,
         articles: articlesData,
       }),
+      ...makeIssueAmdSec({ imageFiles }),
+      ...makeIssueFileSec({
+        images: imageFiles,
+        alto: altoFiles,
+      }),
+      // (optional) keep/add your structMap here
     },
   };
 

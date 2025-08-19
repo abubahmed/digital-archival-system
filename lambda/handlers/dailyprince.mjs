@@ -71,24 +71,85 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     dir: issueName,
     dpi: 400,
     quality: 90,
+    generateImages : false,
   });
   log.info("Merged PDF buffer created");
 
-  // Extract text from the merged PDF buffer and generate ALTO files
-  /*
-  const pages = await extractText({ buffer: mergedPDFBuffer });
-  const altoBuffers = [];
-  for (const page of pages) {
-    const { altoBuffer, name } = generateAltoFile({
-      dir: issueName,
-      pageText: page.text,
-      pageId: page.number,
-      downloadLocally: local,
-    });
-    log.info(`ALTO file for page ${page.number} generated: ${name}`);
-    altoBuffers.push({ buffer: altoBuffer, name: name });
+  const pageStartContent = new Map();
+  // If two articles start on the same page, join their content with blank lines
+  for (const art of articlesData) {
+    const startPage = Array.isArray(art.pages) && art.pages.length ? art.pages[0] : null;
+    if (!startPage) continue;
+    const text = (art.content || "").trim();
+    if (!text) continue;
+    pageStartContent.set(
+      startPage,
+      pageStartContent.has(startPage)
+        ? `${pageStartContent.get(startPage)}\n\n${text}`
+        : text
+    );
   }
-  */
+
+  // --- Dimensions to match your JP2s (8.5x11 at the same DPI used above)
+  const dpiUsed = 400; // keep in sync with mergePDFBuffers({ dpi })
+  const pageWidthPx = Math.round(8.5 * dpiUsed);
+  const pageHeightPx = Math.round(11 * dpiUsed);
+
+  // 'pages' is the array of JP2 file paths returned by pdfToJpegs, so total pages:
+  const totalPages = pages.length;
+
+  const altoDir = path.join(path.dirname(pdfPath), "alto");
+  fs.mkdirSync(altoDir, { recursive: true });
+
+  const altoBuffers = [];
+  const altoFiles = [];
+  for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+    // Use article content if this page is a start; otherwise generate a blank ALTO
+    const pageText = pageStartContent.get(pageNum) || "";
+    // Our JP2 naming pattern is "page-%04d.jp2"
+    const sourceImageName = `page-${String(pageNum).padStart(4, "0")}.jp2`;
+
+    const { altoBuffer, name } = generateAltoFile({
+      dir: path.join(issueName, "alto"),
+      pageText,                 // empty string => blank ALTO (no TextBlock)
+      pageId: pageNum,          // 1-based numbering
+      pageWidth: pageWidthPx,
+      pageHeight: pageHeightPx,
+      measurementUnit: "pixel",
+      sourceImage: sourceImageName,
+      downloadLocally: local,
+      // schema: "v4", // or "docworks14" if you need that flavor
+    
+    });
+
+    log.info(
+      pageText
+        ? `ALTO (with text) generated for page ${pageNum}: ${name}`
+        : `ALTO (blank) generated for page ${pageNum}: ${name}`
+    );
+    altoBuffers.push({ buffer: altoBuffer, name });
+
+    const baseDir = path.dirname(pdfPath);
+    const absPath = path.join(baseDir, "alto", name); // on-disk path
+    const relHref = `file://./alto/${name}`;
+    
+    altoFiles.push({
+      page: pageNum,
+      path: absPath,
+      relHref,
+      name,
+      mimetype: "text/xml",
+    });
+  }
+
+  log.info(`Generated ${altoBuffers.length} ALTO files (one per page; text only on start pages).`);
+
+  const imageFiles = pages.map((p, idx) => ({
+    page: idx + 1,            // 1-based page number
+    path: p,                  // absolute JP2 path (or placeholder path)
+    relHref: `file://./images/${path.basename(p)}`,
+    name: path.basename(p),   // e.g., page-0001.jp2
+  }));
 
   // Generate METS file from merged PDF buffer and ALTO files
   const metsResponse = generateMetsFile({
@@ -96,6 +157,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     issueDate: event.today,
     dir: issueName,
     downloadLocally: local,
+    imageFiles,
+    altoFiles,
   });
   log.info("METS file generated");
 
@@ -212,30 +275,50 @@ const captureArticle = async ({
   };
 };
 
-export const mergePDFBuffers = async ({ buffers, dir, dpi = 400, quality = 90 }) => {
+export const mergePDFBuffers = async ({
+  buffers,
+  dir,
+  dpi = 400,
+  quality = 90,
+  generateImages = false, // <-- set to true to actually write JP2s
+}) => {
   const mergedPdf = await PDFDocument.create();
   for (const buffer of buffers) {
     const pdf = await PDFDocument.load(buffer);
     const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
     copiedPages.forEach((p) => mergedPdf.addPage(p));
   }
+
+  // We can get the count before/after save; either is fine.
+  const pageCount = mergedPdf.getPageCount();
   const mergedPdfBytes = await mergedPdf.save();
 
   const baseDir = path.resolve(process.cwd(), "documents", dir);
   const pdfPath = path.join(baseDir, `${dir}.pdf`);
   const imgOutDir = path.join(baseDir, "images");
+
   fs.mkdirSync(baseDir, { recursive: true });
+  fs.mkdirSync(imgOutDir, { recursive: true }); // ensure dir exists even if we skip images
   fs.writeFileSync(pdfPath, mergedPdfBytes);
 
-  
-  const pages = await pdfToJpegs({
-    pdfPath,
-    outDir: imgOutDir,
-    dpi,
-    quality,
-  });
+  let pages;
+  if (generateImages) {
+    // real JP2 generation
+    pages = await pdfToJpegs({
+      pdfPath,
+      outDir: imgOutDir,
+      dpi,
+      quality,
+    });
+  } else {
+    // placeholder filenames (not created) — consumers only need length;
+    // keeping the expected naming prevents downstream surprises.
+    pages = Array.from({ length: pageCount }, (_, i) =>
+      path.join(imgOutDir, `page-${String(i + 1).padStart(4, "0")}.jp2`)
+    );
+  }
 
-  return { mergedPdfBytes, pdfPath, imagesDir: imgOutDir, pages};
+  return { mergedPdfBytes, pdfPath, imagesDir: imgOutDir, pages };
 };
 
 export async function pdfToJpegs({

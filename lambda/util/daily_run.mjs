@@ -2,6 +2,7 @@ import {
   dailyPrinceHandler,
   mergePDFBuffers,
 } from "../handlers/dailyprince.mjs";
+import he from "he";
 
 export const createTodaysArchive = async ({ event, callback, context }) => {
   // Taken from the Article Tracker apps script
@@ -30,12 +31,24 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
   const tomordate = tomorrow.getDate().toString();
   const tomoryear = tomorrow.getFullYear().toString();
 
-  // --- Minimal helper: naive HTML -> plain text
   function stripHtml(html = "") {
-    return html
-      .replace(/<[^>]*>/g, " ")   // drop all tags
-      .replace(/\s+/g, " ")       // collapse whitespace
-      .trim();
+    let s = he.decode(html);
+
+    // 1. Convert block-level tags to a space
+    s = s.replace(/<\/?(p|div|br|li|section|tr|h[1-6])[^>]*>/gi, " ");
+
+    // 2. Remove all other tags completely (no space)
+    s = s.replace(/<[^>]*>/g, "");
+
+    // 3. Collapse whitespace
+    s = s.replace(/\s+/g, " ").trim();
+
+    // 4. Escape for XML attribute
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   // Function to fetch a specific page

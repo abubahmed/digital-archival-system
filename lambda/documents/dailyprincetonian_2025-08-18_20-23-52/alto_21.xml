@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alto xmlns="http://www.loc.gov/standards/alto/ns-v4#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/standards/alto/ns-v4# http://www.loc.gov/standards/alto/v4/alto-4-2.xsd" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <Description>
+    <MeasurementUnit>pixel</MeasurementUnit>
+    <sourceImageInformation>
+      <fileName>page-0021.jp2</fileName>
+    </sourceImageInformation>
+  </Description>
+  <Layout>
+    <Page ID="page_21" PHYSICAL_IMG_NR="21" WIDTH="3400" HEIGHT="4400">
+      <PrintSpace HPOS="0" VPOS="0" WIDTH="3400" HEIGHT="4400">
+        <TextBlock ID="tb_21_1" HPOS="100" VPOS="100" WIDTH="3200" HEIGHT="200">
+          <TextLine ID="tl_21_1" HPOS="110" VPOS="120" WIDTH="3180" HEIGHT="40" BASELINE="150">
+            <String ID="str_21_1" CONTENT="Play the puzzle here . Scroll down to see the solutions. Tuesday Puzzle: “ Anything ’ s Possible ”" HPOS="110" VPOS="120" WIDTH="3180" HEIGHT="40"/>
+          </TextLine>
+        </TextBlock>
+      </PrintSpace>
+    </Page>
+  </Layout>
+</alto>
