@@ -164,15 +164,21 @@ export const getNewsletterForDate = async ({ date, browser }) => {
   const { newsletters } = await fetchNewslettersInWindow({ start, end, pageSize: 100 });
   if (!newsletters || newsletters.length === 0) return null;
 
-  // Choose the last in-window item (most recent) or the first—your call.
   const post = newsletters[newsletters.length - 1];
-
   const url = post.long_archive_url;
   const ts = new Date(post.send_time ?? post.create_time);
 
-  const pdfBuffer = await captureNewsletter({ url, browser });
+  let contentText = "";
+  try {
+    const contentResp = await mailchimp.campaigns.getContent(post.id);
+    // Plain text version is often best:
+    contentText = contentResp.plain_text || "";
+    contentText = filterNewsletterText(contentText);
+  } catch (err) {
+    log.warn(`Could not fetch campaign content for ${post.id}: ${err.message}`);
+  }
 
-  // Determine page count so we can compute starting pages later in dailyPrinceHandler
+  const pdfBuffer = await captureNewsletter({ url, browser });
   const pdfDoc = await PDFDocument.load(pdfBuffer);
   const pageCount = pdfDoc.getPageCount();
 
@@ -180,11 +186,110 @@ export const getNewsletterForDate = async ({ date, browser }) => {
     pdfBuffer,
     pageCount,
     url,
-    title: "Daily Newsletter",
-    content: "", // or a short summary if you want
+    title: post.settings?.subject_line || "Daily Newsletter",
+    content: contentText || post.settings?.preview_text || "",
     ts,
   };
 };
+
+export function filterNewsletterText(raw) {
+  if (!raw) return "";
+
+  let t = raw;
+
+  // Strip Mailchimp merge tags that survive stripHtml (e.g., *|MC_PREVIEW_TEXT|*)
+  t = t.replace(/\*\|[^|]+\|\*/g, "");
+
+  // Helper: remove unmatched parentheses reliably
+  function balanceParens(s) {
+    // pass 1: remove unmatched ')'
+    let out = "";
+    let open = 0;
+    for (const ch of s) {
+      if (ch === "(") { open++; out += ch; }
+      else if (ch === ")") {
+        if (open > 0) { open--; out += ch; }
+        // else skip this unmatched ')'
+      } else {
+        out += ch;
+      }
+    }
+    // pass 2: remove any leftover unmatched '(' from right to left
+    if (open > 0) {
+      let res = "";
+      for (let i = out.length - 1; i >= 0; i--) {
+        const ch = out[i];
+        if (ch === "(" && open > 0) { open--; continue; }
+        res = ch + res;
+      }
+      out = res;
+    }
+    return out;
+  }
+
+  const kept = [];
+  for (let line of t.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line) continue;
+
+    // Remove inline URLs/mailto but keep surrounding text
+    line = line
+      .replace(/https?:\/\/\S+/gi, "")
+      .replace(/\bmailto:\S+/gi, "");
+
+    // Remove empty ()/[] and parens with no letters/digits inside
+    line = line
+      .replace(/\(\s*\)/g, "")
+      .replace(/\[\s*\]/g, "")
+      .replace(/\((?:\s|[^\p{L}\p{N}])*\)/gu, "");
+
+    // Balance parentheses (removes any remaining unmatched '(' or ')')
+    line = balanceParens(line);
+
+    // Clean up spacing around punctuation and parens
+    line = line
+      .replace(/\s+([,.;:!?])/g, "$1")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+    if (!line) continue;
+
+    const lower = line.toLowerCase();
+
+    // Boilerplate/tracking
+    if (
+      lower.includes("unsubscribe") ||
+      lower.includes("update your preferences") ||
+      lower.includes("why did i get this") ||
+      lower.includes("copyright ©") ||
+      lower.includes("add us to your address book") ||
+      lower.includes("list-manage.com") ||
+      lower.includes("view this email in your browser")
+    ) continue;
+
+    // “READ THE STORY/OPINION →” lines
+    if (/^read (the )?(story|opinion)\b/i.test(line)) continue;
+
+    // Divider lines
+    if (/^[\s\-\u2014_*=]+$/.test(line)) continue;
+
+    // Skip lines with almost no letters
+    const letters = (line.match(/[A-Za-z]/g) || []).length;
+    if (letters < 3) continue;
+
+    kept.push(line);
+  }
+
+  let out = kept.join("\n");
+
+  // Hard cut only at "Referred by a friend"
+  const idx = out.toLowerCase().indexOf("referred by a friend");
+  if (idx !== -1) out = out.slice(0, idx);
+
+  // Collapse whitespace
+  out = out.replace(/\n{3,}/g, "\n\n").trim();
+
+  return out;
+}
 
 //await newsletterHandler({
 //  event: { date: new Date("2023-09-13T10:00:00Z") }

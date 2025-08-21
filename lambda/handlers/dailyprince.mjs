@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import { stripHtml } from "./../util/daily_run.mjs";
 
 
 dotenv.config();
@@ -58,8 +59,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
         pdfBuffer: newsletter.pdfBuffer,
         pages,
         url: newsletter.url,
-        title: newsletter.title,
-        content: newsletter.content,
+        title: stripHtml(newsletter.title),
+        content: stripHtml(newsletter.content),
       });
 
       startingPage += newsletter.pageCount;

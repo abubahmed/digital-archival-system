@@ -7,7 +7,7 @@ import he from "he";
 export const createTodaysArchive = async ({ event, callback, context }) => {
   // Taken from the Article Tracker apps script
 
-  const today = new Date("September 13, 2023 15:00:00");
+  const today = new Date("April 26, 2023 15:00:00");
 
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
@@ -30,26 +30,6 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
       : (tomorrow.getMonth() + 1).toString();
   const tomordate = tomorrow.getDate().toString();
   const tomoryear = tomorrow.getFullYear().toString();
-
-  function stripHtml(html = "") {
-    let s = he.decode(html);
-
-    // 1. Convert block-level tags to a space
-    s = s.replace(/<\/?(p|div|br|li|section|tr|h[1-6])[^>]*>/gi, " ");
-
-    // 2. Remove all other tags completely (no space)
-    s = s.replace(/<[^>]*>/g, "");
-
-    // 3. Collapse whitespace
-    s = s.replace(/\s+/g, " ").trim();
-
-    // 4. Escape for XML attribute
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
 
   // Function to fetch a specific page
   async function fetchPage(pageNum) {
@@ -179,5 +159,25 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
     } 
   });
 };
+
+export function stripHtml(html = "") {
+  let s = he.decode(html);
+
+  // 1. Convert block-level tags to a space
+  s = s.replace(/<\/?(p|div|br|li|section|tr|h[1-6])[^>]*>/gi, " ");
+
+  // 2. Remove all other tags completely (no space)
+  s = s.replace(/<[^>]*>/g, "");
+
+  // 3. Collapse whitespace
+  s = s.replace(/\s+/g, " ").trim();
+
+  // 4. Escape for XML attribute
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 createTodaysArchive({});

@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mets:mets xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:mix="http://www.loc.gov/mix/" xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd" TYPE="Newspaper" LABEL="The Daily Princetonian 13.09.2023">
+  <mets:metsHdr CREATEDATE="2025-08-21T05:19:51.202Z" LASTMODDATE="2025-08-21T05:19:51.202Z" RECORDSTATUS="complete">
+    <mets:agent ROLE="CREATOR" TYPE="OTHER" OTHERTYPE="SOFTWARE">
+      <mets:name>Automated Articles Issue Archiver</mets:name>
+      <mets:note>Version 1.0.0</mets:note>
+    </mets:agent>
+  </mets:metsHdr>
+  <mets:dmdSec ID="ISSUE_DESCRIPTION">
+    <mets:mdWrap MDTYPE="MODS">
+      <mets:xmlData>
+        <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="MODSMD_ISSUE1_TI1">
+          <mods:titleInfo ID="MODSMD_PRINT_TI1">
+            <mods:nonSort>The</mods:nonSort>
+            <mods:title>Daily Princetonian</mods:title>
+          </mods:titleInfo>
+          <mods:part type="issue">
+            <mods:text>Vol. CXLVII, No. 1 (Sep 13, 2023)</mods:text>
+            <mods:date encoding="iso8601">2023-09-13</mods:date>
+            <mods:detail type="volume" level="1">
+              <mods:number>147</mods:number>
+            </mods:detail>
+            <mods:detail type="number" level="2">
+              <mods:number>1</mods:number>
+            </mods:detail>
+          </mods:part>
+          <mods:relatedItem type="host">
+            <mods:titleInfo>
+              <mods:nonSort>The</mods:nonSort>
+              <mods:title>Daily Princetonian</mods:title>
+            </mods:titleInfo>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE1">
+            <mods:titleInfo>
+              <mods:title>Wrestling coach heading to Stanford: Your Daily 'Prince' Briefing</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>1</mods:start>
+                <mods:end>4</mods:end>
+                <mods:list>p. 1 - 4</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE2">
+            <mods:titleInfo>
+              <mods:title>Summer interns in Washington make use of new SPIA space</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>5</mods:start>
+                <mods:end>7</mods:end>
+                <mods:list>p. 5 - 7</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE3">
+            <mods:titleInfo>
+              <mods:title>Reactions: What should a Princeton education prepare us to do?</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>8</mods:start>
+                <mods:end>11</mods:end>
+                <mods:list>p. 8 - 11</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE4">
+            <mods:titleInfo>
+              <mods:title>After 17 seasons at the helm of Princeton wrestling, Head Coach Chris Ayres is heading to Stanford</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>12</mods:start>
+                <mods:end>14</mods:end>
+                <mods:list>p. 12 - 14</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+          <mods:relatedItem type="constituent" ID="MODSMD_ARTICLE5">
+            <mods:titleInfo>
+              <mods:title>This week in Princeton Athletics</mods:title>
+            </mods:titleInfo>
+            <mods:part type="article">
+              <mods:extent unit="pages">
+                <mods:start>15</mods:start>
+                <mods:end>19</mods:end>
+                <mods:list>p. 15 - 19</mods:list>
+              </mods:extent>
+            </mods:part>
+          </mods:relatedItem>
+        </mods:mods>
+      </mets:xmlData>
+    </mets:mdWrap>
+  </mets:dmdSec>
+  <mets:amdSec ID="IMGPARAM00001" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00001TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00002" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00002TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00003" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00003TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00004" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00004TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00005" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00005TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00006" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00006TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00007" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00007TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00008" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00008TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00009" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00009TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00010" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00010TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00011" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00011TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00012" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00012TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00013" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00013TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00014" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00014TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00015" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00015TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00016" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00016TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00017" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00017TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00018" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00018TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:amdSec ID="IMGPARAM00019" xmlns="http://www.loc.gov/METS/">
+    <mets:techMD ID="IMGPARAM00019TECHMD">
+      <mets:mdWrap MDTYPE="NISOIMG">
+        <mets:xmlData>
+          <mix:mix>
+            <mix:BasicDigitalObjectInformation>
+              <mix:FormatName>image/jp2</mix:FormatName>
+            </mix:BasicDigitalObjectInformation>
+            <mix:BasicImageInformation>
+              <mix:BasicImageCharacteristics/>
+            </mix:BasicImageInformation>
+            <mix:ImageCaptureMetadata>
+              <mix:GeneralCaptureInformation>
+                <mix:SourceType>digitalCameraOrScanner</mix:SourceType>
+              </mix:GeneralCaptureInformation>
+            </mix:ImageCaptureMetadata>
+          </mix:mix>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:techMD>
+  </mets:amdSec>
+  <mets:fileSec xmlns="http://www.loc.gov/METS/">
+    <mets:fileGrp ID="IMGGRP" USE="Images">
+      <mets:file ID="IMG00001" MIMETYPE="image/jp2" ADMID="IMGPARAM00001">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0001.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00002" MIMETYPE="image/jp2" ADMID="IMGPARAM00002">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0002.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00003" MIMETYPE="image/jp2" ADMID="IMGPARAM00003">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0003.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00004" MIMETYPE="image/jp2" ADMID="IMGPARAM00004">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0004.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00005" MIMETYPE="image/jp2" ADMID="IMGPARAM00005">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0005.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00006" MIMETYPE="image/jp2" ADMID="IMGPARAM00006">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0006.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00007" MIMETYPE="image/jp2" ADMID="IMGPARAM00007">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0007.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00008" MIMETYPE="image/jp2" ADMID="IMGPARAM00008">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0008.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00009" MIMETYPE="image/jp2" ADMID="IMGPARAM00009">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0009.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00010" MIMETYPE="image/jp2" ADMID="IMGPARAM00010">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0010.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00011" MIMETYPE="image/jp2" ADMID="IMGPARAM00011">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0011.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00012" MIMETYPE="image/jp2" ADMID="IMGPARAM00012">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0012.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00013" MIMETYPE="image/jp2" ADMID="IMGPARAM00013">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0013.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00014" MIMETYPE="image/jp2" ADMID="IMGPARAM00014">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0014.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00015" MIMETYPE="image/jp2" ADMID="IMGPARAM00015">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0015.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00016" MIMETYPE="image/jp2" ADMID="IMGPARAM00016">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0016.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00017" MIMETYPE="image/jp2" ADMID="IMGPARAM00017">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0017.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00018" MIMETYPE="image/jp2" ADMID="IMGPARAM00018">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0018.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="IMG00019" MIMETYPE="image/jp2" ADMID="IMGPARAM00019">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./images/page-0019.jp2" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+    </mets:fileGrp>
+    <mets:fileGrp ID="ALTOGRP" USE="Text">
+      <mets:file ID="ALTO00001" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_1.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00002" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_2.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00003" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_3.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00004" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_4.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00005" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_5.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00006" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_6.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00007" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_7.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00008" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_8.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00009" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_9.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00010" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_10.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00011" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_11.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00012" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_12.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00013" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_13.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00014" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_14.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00015" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_15.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00016" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_16.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00017" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_17.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00018" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_18.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+      <mets:file ID="ALTO00019" MIMETYPE="text/xml">
+        <mets:FLocat LOCTYPE="URL" xlink:href="file://./alto/alto_19.xml" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      </mets:file>
+    </mets:fileGrp>
+  </mets:fileSec>
+</mets:mets>
