@@ -1,7 +1,6 @@
-import { formatTimestamp, putToS3, instantiateS3 } from "../util/helper.mjs";
+import { formatTimestamp, putToS3, instantiateS3, sanitizeFileName } from "../util/helper.mjs";
 import fs from "fs";
 import path from "path";
-import TimeDatabase from "../util/manage_db.mjs";
 import mailchimp from "@mailchimp/mailchimp_marketing";
 import log from "./../util/logger.mjs";
 import dotenv from "dotenv";
@@ -9,17 +8,21 @@ import puppeteer from "puppeteer";
 
 dotenv.config();
 
+/**
+ * Handler: archives any Mailchimp campaigns sent in the 24 hours before `event.date`.
+ * - `event.date` (optional): a JS Date; defaults to new Date().
+ *   Window = [date - 24h, date)
+ */
 export const newsletterHandler = async ({ event, context, callback }) => {
-  const local = process.env.LOCAL;
+  //const local = process.env.LOCAL;
+  const local = true; // For testing purposes, set to true
   const bucketName = process.env.AWS_BUCKET_NAME;
-  const timeDatabase = new TimeDatabase("newsletter");
-  const latestTime = timeDatabase.getLatestTime();
-  const currentTime = new Date();
-  if ((currentTime - latestTime) / (1000 * 60 * 60 * 24) < 7) {
-    throw new Error("Latest time is less than 7 days old");
-  }
 
-  // Instantiate the AWS S3 client and fetch Instagram posts
+  // Resolve end date (default: now) and start = end - 24h
+  const end = event?.date instanceof Date ? event.date : new Date();
+  if (isNaN(end.getTime())) throw new Error("Invalid event.date; must be a Date");
+  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
   const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
   const browser = await puppeteer.launch({
@@ -28,97 +31,131 @@ export const newsletterHandler = async ({ event, context, callback }) => {
   });
   log.info("Puppeteer client instantiated");
 
-  const { newsletters: posts, latestTime: newestLatestTime } = await fetchNewsletters({ after: latestTime });
-  timeDatabase.addTime(newestLatestTime);
-  log.info(`${posts.length} newsletters fetched`);
-
-  // Iterate through each post and process it
-  let processedPosts = 0;
-  for (const post of posts) {
-    processedPosts++;
-    log.info(`Processing post ${processedPosts}/${posts.length}`);
-    const { long_archive_url, create_time } = post;
-    const fileName = `${sanitizeFileName(long_archive_url)}_${formatTimestamp(create_time)}.pdf`;
-
-    const pdfBuffer = await captureNewsletter({
-      url: long_archive_url,
-      browser,
-    });
-    if (local) {
-      const localPath = `./documents/newsletters/${fileName}`;
-      fs.mkdirSync(path.dirname(localPath), { recursive: true });
-      fs.writeFileSync(localPath, pdfBuffer);
+  try {
+    const { newsletters } = await fetchNewslettersInWindow({ start, end, pageSize: 100 });
+    if (newsletters.length === 0) {
+      log.info(`No newsletters found in window ${start.toISOString()} to ${end.toISOString()}`);
+      return;
     }
-    await putToS3({
-      file: pdfBuffer,
-      S3Client: s3Client,
-      bucketName,
-      path: `newsletters/${fileName}`,
-    });
+
+    if (newsletters.length > 1) {
+      log.info(`Found ${newsletters.length} newsletters in the window; processing all.`);
+    }
+
+    let processed = 0;
+    for (const post of newsletters) {
+      processed++;
+      log.info(`Processing ${processed}/${newsletters.length}`);
+
+      const { long_archive_url, send_time, create_time } = post;
+      const ts = new Date(send_time ?? create_time);
+      const fileName = `${sanitizeFileName(long_archive_url)}_${formatTimestamp(ts)}.pdf`;
+
+      const pdfBuffer = await captureNewsletter({ url: long_archive_url, browser });
+
+      if (local) {
+        const localPath = `./documents/newsletters/${fileName}`;
+        fs.mkdirSync(path.dirname(localPath), { recursive: true });
+        fs.writeFileSync(localPath, pdfBuffer);
+      }
+
+      /*await putToS3({
+        file: pdfBuffer,
+        S3Client: s3Client,
+        bucketName,
+        path: `newsletters/${fileName}`,
+      });*/
+    }
+  } finally {
+    await browser.close();
   }
-  browser.close();
 };
 
-export const fetchNewsletters = async ({ after = new Date(0) }) => {
+export const fetchNewslettersInWindow = async ({ start, end, pageSize = 100 }) => {
   mailchimp.setConfig({
     apiKey: process.env.MAILCHIMP_API_KEY,
     server: "us7",
   });
-  const response = await mailchimp.campaigns.list({
-    count: 5,
-    offset: 0,
-    since_create_time: after,
-    sort_field: "create_time",
-  })
-  const newsletters = response.campaigns.filter(
-    (newsletter) => newsletter.long_archive_url && newsletter.create_time
-      && newsletter.id && newsletter.archive_url
-  );
-  if (newsletters.length === 0) throw new Error("No newsletters found after the specified date");
-  const latestTime = new Date(newsletters[newsletters.length - 1].create_time)
-  return {
-    newsletters,
-    latestTime,
+
+  const since_send_time = start.toISOString();
+  let offset = 0;
+  const all = [];
+
+  while (true) {
+    const resp = await mailchimp.campaigns.list({
+      count: pageSize,
+      offset,
+      since_send_time,
+      sort_field: "create_time",
+      sort_dir: "ASC",
+    });
+
+    const batch = resp?.campaigns ?? [];
+    if (batch.length === 0) break;
+
+    all.push(...batch);
+    offset += batch.length;
+
+    const lastCreate = batch[batch.length - 1]?.create_time;
+    if (lastCreate && new Date(lastCreate) >= end) break;
   }
+
+  const inWindow = all.filter((c) => {
+    if (!(c?.long_archive_url && c?.archive_url && c?.id)) return false;
+    const ts = c.send_time ? new Date(c.send_time) : (c.create_time ? new Date(c.create_time) : null);
+    if (ts && ts >= start && ts < end) {
+      return true;
+    }
+    return false;
+  });
+
+  inWindow.sort((a, b) => {
+    const aT = new Date(a.send_time ?? a.create_time);
+    const bT = new Date(b.send_time ?? b.create_time);
+    return aT - bT;
+  });
+
+  return { newsletters: inWindow };
 };
 
 const captureNewsletter = async ({ url, browser }) => {
-  let page;
-  page = await browser.newPage();
+  const page = await browser.newPage();
+
   const domain = new URL(url).host;
-  const cookies = [
-    {
-      name: "max-age",
-      value: `${60 * 60 * 24 * 2}`,
-      url: url,
-      domain: domain,
-      path: "/",
-      expires: new Date().getTime(),
-      "max-age": 60 * 60 * 24 * 2,
-    },
-  ];
-  await page.setCookie(...cookies);
+  await page.setCookie({
+    name: "max-age",
+    value: `${60 * 60 * 24 * 2}`,
+    url,
+    domain,
+    path: "/",
+    expires: Date.now() + 2 * 24 * 60 * 60 * 1000,
+    "max-age": 60 * 60 * 24 * 2,
+  });
+
   await page.goto(url, {
     timeout: 120000,
     waitUntil: ["networkidle2", "domcontentloaded"],
   });
+
   await page.evaluate(() => {
     const targetItems = document.querySelectorAll("#awesomebar");
     targetItems.forEach((item) => item.remove());
   });
 
   const iframes = await page.$$("iframe");
-  const iframePromises = iframes.map(async (iframeElement) => {
-    await iframeElement.contentFrame();
-  });
-  await Promise.all(iframePromises);
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await Promise.all(iframes.map((el) => el.contentFrame()));
+  await new Promise((r) => setTimeout(r, 1000));
 
-  const pdfOptions = {
+  const pdfBuffer = await page.pdf({
     width: "8.5in",
     height: "11in",
     displayHeaderFooter: true,
-  };
-  const pdfBuffer = await page.pdf(pdfOptions);
+  });
+
+  await page.close();
   return pdfBuffer;
-}
+};
+
+await newsletterHandler({
+  event: { date: new Date("2023-09-13T10:00:00Z") }
+});
