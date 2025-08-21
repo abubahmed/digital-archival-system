@@ -7,7 +7,7 @@ import he from "he";
 export const createTodaysArchive = async ({ event, callback, context }) => {
   // Taken from the Article Tracker apps script
 
-  const today = new Date("April 11, 2023 15:00:00");
+  const today = new Date("September 13, 2023 15:00:00");
 
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
@@ -98,7 +98,7 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
 
     if (published >= yesterday && published < today) {
       // Grab headline and plain-text content (naive strip)
-      const headline = item.headline;
+      const headline = stripHtml(item.headline);
       const contentHtml = item.content || item.body || "";
       const content = stripHtml(contentHtml);
 

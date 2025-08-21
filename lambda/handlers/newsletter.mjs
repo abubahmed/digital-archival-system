@@ -5,6 +5,7 @@ import mailchimp from "@mailchimp/mailchimp_marketing";
 import log from "./../util/logger.mjs";
 import dotenv from "dotenv";
 import puppeteer from "puppeteer";
+import { PDFDocument } from "pdf-lib";
 
 dotenv.config();
 
@@ -156,6 +157,35 @@ const captureNewsletter = async ({ url, browser }) => {
   return pdfBuffer;
 };
 
-await newsletterHandler({
-  event: { date: new Date("2023-09-13T10:00:00Z") }
-});
+export const getNewsletterForDate = async ({ date, browser }) => {
+  const end = date instanceof Date ? date : new Date(date);
+  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+  const { newsletters } = await fetchNewslettersInWindow({ start, end, pageSize: 100 });
+  if (!newsletters || newsletters.length === 0) return null;
+
+  // Choose the last in-window item (most recent) or the first—your call.
+  const post = newsletters[newsletters.length - 1];
+
+  const url = post.long_archive_url;
+  const ts = new Date(post.send_time ?? post.create_time);
+
+  const pdfBuffer = await captureNewsletter({ url, browser });
+
+  // Determine page count so we can compute starting pages later in dailyPrinceHandler
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const pageCount = pdfDoc.getPageCount();
+
+  return {
+    pdfBuffer,
+    pageCount,
+    url,
+    title: "Daily Newsletter",
+    content: "", // or a short summary if you want
+    ts,
+  };
+};
+
+//await newsletterHandler({
+//  event: { date: new Date("2023-09-13T10:00:00Z") }
+//});

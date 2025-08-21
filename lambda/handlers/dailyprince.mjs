@@ -4,6 +4,7 @@ import {
   extractText,
   generateMetsFile,
 } from "./../util/mets_alto_dp.mjs";
+import { getNewsletterForDate } from "./newsletter.mjs";
 import { putToS3, instantiateS3, formatTimestamp } from "./../util/helper.mjs";
 import { PDFDocument } from "pdf-lib";
 import log from "./../util/logger.mjs";
@@ -46,22 +47,44 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   // Capture articles from the provided list
   let startingPage = 1;
   const articlesData = [];
-  for (const [index, art] of validArticles.entries()) {
-    const response = await captureArticle({
-      url: art.url,
-      browser,
-      header: index === 0,
-      footer: index === validArticles.length - 1,
-      startingPage,
-      // pass through metadata (optional)
-      title: art.title,
-      content: art.content,
-    });
-    log.info(`Captured article: ${art.url}`);
-    articlesData.push(response);
-    startingPage += response.pages.length;
+
+  try {
+    const anchorDate = event.today instanceof Date ? event.today : new Date();
+    const newsletter = await getNewsletterForDate({ date: anchorDate, browser });
+    if (newsletter) {
+      const pages = Array.from({ length: newsletter.pageCount }, (_, i) => startingPage + i);
+
+      articlesData.push({
+        pdfBuffer: newsletter.pdfBuffer,
+        pages,
+        url: newsletter.url,
+        title: newsletter.title,
+        content: newsletter.content,
+      });
+
+      startingPage += newsletter.pageCount;
+      log.info(`Prepended newsletter (${newsletter.pageCount} pages)`);
+    } else {
+      log.info(`No newsletter found for window [${new Date(anchorDate - 86400000).toISOString()} to ${anchorDate.toISOString()}]`);
+    }
+    for (const [index, art] of validArticles.entries()) {
+      const response = await captureArticle({
+        url: art.url,
+        browser,
+        header: index === 0,
+        footer: index === validArticles.length - 1,
+        startingPage,
+        // pass through metadata (optional)
+        title: art.title,
+        content: art.content,
+      });
+      log.info(`Captured article: ${art.url}`);
+      articlesData.push(response);
+      startingPage += response.pages.length;
+    }
+  } finally {
+    await browser.close();
   }
-  await browser.close();
 
   // Merge all captured articles into a single PDF buffer
   const issueName = `dailyprincetonian_${formatTimestamp(new Date())}`;
