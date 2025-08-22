@@ -117,28 +117,33 @@ export const generateAltoFile = ({
   return { altoBuffer, name: `alto_${pageId}.xml` };
 };
 
+// --- LOGICAL structMap: ISSUE/VOLUME point at a valid dmdSec; no per-article DMDID.
+//     First page anchor is chosen from article.content (tb_* if text, else page_*).
 export function makeLogicalStructMap({
-  articles,                         // required: your articlesData [{ title, url?, pages:[...] }, ...]
+  articles,                         // [{ title, url?, pages:[...], content? }, ...]
   newspaperLabel,                   // e.g., "The Daily Princetonian no. 119 10.12.2015"
-  issueDmdId = "MODSMD_ISSUE1",
-  volumeDmdIds = ["MODSMD_PRINT", "MODSMD_ELEC"],
-  firstPageAnchor = (p) => `tb_${p}_1`, // first page holds full text
-  laterPageAnchor  = (p) => `page_${p}`, // later pages may be blank ALTO
+  issueDmdId = "ISSUE_DESCRIPTION", // <-- keep earlier change
+  volumeDmdIds = [],                // <-- keep earlier change (no bad refs)
+  firstPageAnchor = (p) => `tb_${p}_1`, // kept for compatibility
+  laterPageAnchor  = (p) => `page_${p}`, // kept for compatibility
 }) {
   const pad5 = (n) => String(n).padStart(5, "0");
-
-  // DIVL-style incremental IDs: DIVL1, DIVL2, ...
   let idCounter = 1;
   const nextId = () => `DIVL${idCounter++}`;
 
-  // Build ARTICLE nodes inside a CONTENT container
   const articleDivs = (articles || []).map((art, i) => {
     const pages = (Array.isArray(art.pages) ? [...art.pages] : []).sort((a, b) => a - b);
+
+    // Decide the first-page anchor based on presence of content
+    const firstHasText = typeof art.content === "string" && art.content.trim().length > 0;
+
     const areas = pages.map((p, idx) => ({
       $: {
         BETYPE: "IDREF",
         FILEID: `ALTO${pad5(p)}`,
-        BEGIN: idx === 0 ? firstPageAnchor(p) : laterPageAnchor(p),
+        BEGIN: idx === 0
+          ? (firstHasText ? firstPageAnchor(p) : laterPageAnchor(p))
+          : laterPageAnchor(p),
       },
     }));
 
@@ -147,12 +152,11 @@ export function makeLogicalStructMap({
         ID: nextId(),
         TYPE: "ARTICLE",
         LABEL: art.title || `Article ${i + 1}`,
-        DMDID: `MODSMD_ARTICLE${i + 1}`, // matches your makeIssueDmdSec; remove if undesired
+        // DMDID intentionally omitted (earlier change)
       },
       ...(art.url
         ? { mptr: { $: { "xlink:href": art.url, "xmlns:xlink": "http://www.w3.org/1999/xlink" } } }
         : {}),
-      // Minimal nesting: ARTICLE → BODY → BODY_CONTENT → TEXT → fptr(seq of ALTO areas)
       div: {
         $: { ID: nextId(), TYPE: "BODY" },
         div: {
@@ -166,20 +170,10 @@ export function makeLogicalStructMap({
     };
   });
 
-  // CONTENT container holding the articles
-  const contentDiv = {
-    $: { ID: nextId(), TYPE: "CONTENT" },
-    div: articleDivs,
-  };
+  const contentDiv = { $: { ID: nextId(), TYPE: "CONTENT" }, div: articleDivs };
 
-  // ISSUE (no title section), then VOLUME, then Newspaper
   const issueDiv = {
-    $: {
-      ID: nextId(),
-      TYPE: "ISSUE",
-      DMDID: issueDmdId,
-      LABEL: newspaperLabel || "Issue",
-    },
+    $: { ID: nextId(), TYPE: "ISSUE", DMDID: issueDmdId, LABEL: newspaperLabel || "Issue" },
     div: contentDiv,
   };
 
@@ -187,22 +181,17 @@ export function makeLogicalStructMap({
     $: {
       ID: nextId(),
       TYPE: "VOLUME",
-      DMDID: (volumeDmdIds || []).join(" "),
+      ...(volumeDmdIds.length ? { DMDID: volumeDmdIds.join(" ") } : {}), // only if non-empty
       LABEL: newspaperLabel || "Volume",
     },
     div: issueDiv,
   };
 
   const newspaperDiv = {
-    $: {
-      ID: nextId(),
-      TYPE: "Newspaper",
-      LABEL: newspaperLabel || "Newspaper",
-    },
+    $: { ID: nextId(), TYPE: "Newspaper", LABEL: newspaperLabel || "Newspaper" },
     div: volumeDiv,
   };
 
-  // Return LOGICAL structMap only (combine with your PHYSICAL elsewhere)
   return {
     structMap: {
       $: { LABEL: "Logical Structure", TYPE: "LOGICAL", xmlns: "http://www.loc.gov/METS/" },
@@ -211,12 +200,13 @@ export function makeLogicalStructMap({
   };
 }
 
+// --- PHYSICAL structMap: attach only to valid dmdSec or none ---
 function makePhysicalStructMap({
   numPages,
   rootLabel = "Physical Structure",
   newspaperLabel = "The Daily Princetonian",
   newspaperType = "Newspaper",
-  dmdIds = ["MODSMD_PRINT", "MODSMD_ELEC"],
+  dmdIds = ["ISSUE_DESCRIPTION"], // <-- was ["MODSMD_PRINT","MODSMD_ELEC"]
 }) {
   if (!Number.isInteger(numPages) || numPages < 1) return {};
 
@@ -225,12 +215,7 @@ function makePhysicalStructMap({
   const pageDivs = [];
   for (let p = 1; p <= numPages; p++) {
     const divId = `DIVP${p + 1}`;
-    const attrs = {
-      ID: divId,
-      ORDER: String(p),
-      ORDERLABEL: String(p),
-      TYPE: "PAGE",
-    };
+    const attrs = { ID: divId, ORDER: String(p), ORDERLABEL: String(p), TYPE: "PAGE" };
     if (p > 1) attrs.LABEL = String(p);
 
     pageDivs.push({
@@ -239,7 +224,6 @@ function makePhysicalStructMap({
         par: {
           area: [
             { $: { FILEID: `IMG${pad5(p)}` } },
-            // Anchor to the ALTO Page ID you generate: ID="page_${p}"
             { $: { FILEID: `ALTO${pad5(p)}`, BETYPE: "IDREF", BEGIN: `page_${p}` } },
           ],
         },
@@ -255,7 +239,7 @@ function makePhysicalStructMap({
           ID: "DIVP1",
           LABEL: newspaperLabel,
           TYPE: newspaperType,
-          ...(dmdIds?.length ? { DMDID: dmdIds.join(" ") } : {}),
+          ...(dmdIds?.length ? { DMDID: dmdIds.join(" ") } : {}), // keep only valid DMDIDs
         },
         div: pageDivs,
       },
@@ -321,7 +305,8 @@ function buildImageTechMD(img, seq) {
 }
 
 function makeIssueFileSec({ images = [], alto = [] }) {
-  const pickHref = (entry) => entry?.relHref || entry?.href || entry?.path;
+  const pickHref = (entry) => (entry?.relHref || entry?.href || entry?.path || "")
+    .replace(/^file:\/\//i, ""); // <-- remove "file://" if present
 
   const imgGrp = images.length
     ? {
@@ -330,12 +315,12 @@ function makeIssueFileSec({ images = [], alto = [] }) {
           $: {
             ID: img.id || `IMG${String(i + 1).padStart(5, "0")}`,
             MIMETYPE: img.mimetype || "image/jp2",
-            ...(img.amdId ? { ADMID: img.amdId } : {}),  // <-- link to amdSec
+            ...(img.amdId ? { ADMID: img.amdId } : {}),
           },
           "mets:FLocat": {
             $: {
               LOCTYPE: "URL",
-              "xlink:href": pickHref(img),
+              "xlink:href": pickHref(img),                        // <-- now no scheme
               "xmlns:xlink": "http://www.w3.org/1999/xlink",
             },
           },
@@ -350,12 +335,11 @@ function makeIssueFileSec({ images = [], alto = [] }) {
           $: {
             ID: a.id || `ALTO${String(i + 1).padStart(5, "0")}`,
             MIMETYPE: a.mimetype || "text/xml",
-            // Usually no ADMID for ALTO, unless you also build text techMD
           },
           "mets:FLocat": {
             $: {
               LOCTYPE: "URL",
-              "xlink:href": pickHref(a),
+              "xlink:href": pickHref(a),                           // <-- now no scheme
               "xmlns:xlink": "http://www.w3.org/1999/xlink",
             },
           },
@@ -368,7 +352,6 @@ function makeIssueFileSec({ images = [], alto = [] }) {
     ? { "mets:fileSec": { $: { xmlns: "http://www.loc.gov/METS/" }, "mets:fileGrp": fileGrps } }
     : {};
 }
-
 
 // --- public: make <mets:amdSec> for images only ---
 // --- public: make multiple <mets:amdSec>, one per image ---
