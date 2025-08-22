@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import {
   generateAltoFile,
-  extractText,
   generateMetsFile,
 } from "./../util/mets_alto_dp.mjs";
 import { getNewsletterForDate } from "./newsletter.mjs";
@@ -183,6 +182,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     downloadLocally: local,
     imageFiles,
     altoFiles,
+    issueNumber: 1,
+    volumeNumber: 147, // hardcoded for now; update as needed
   });
   log.info("METS file generated");
 

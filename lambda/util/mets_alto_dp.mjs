@@ -117,6 +117,152 @@ export const generateAltoFile = ({
   return { altoBuffer, name: `alto_${pageId}.xml` };
 };
 
+export function makeLogicalStructMap({
+  articles,                         // required: your articlesData [{ title, url?, pages:[...] }, ...]
+  newspaperLabel,                   // e.g., "The Daily Princetonian no. 119 10.12.2015"
+  issueDmdId = "MODSMD_ISSUE1",
+  volumeDmdIds = ["MODSMD_PRINT", "MODSMD_ELEC"],
+  firstPageAnchor = (p) => `tb_${p}_1`, // first page holds full text
+  laterPageAnchor  = (p) => `page_${p}`, // later pages may be blank ALTO
+}) {
+  const pad5 = (n) => String(n).padStart(5, "0");
+
+  // DIVL-style incremental IDs: DIVL1, DIVL2, ...
+  let idCounter = 1;
+  const nextId = () => `DIVL${idCounter++}`;
+
+  // Build ARTICLE nodes inside a CONTENT container
+  const articleDivs = (articles || []).map((art, i) => {
+    const pages = (Array.isArray(art.pages) ? [...art.pages] : []).sort((a, b) => a - b);
+    const areas = pages.map((p, idx) => ({
+      $: {
+        BETYPE: "IDREF",
+        FILEID: `ALTO${pad5(p)}`,
+        BEGIN: idx === 0 ? firstPageAnchor(p) : laterPageAnchor(p),
+      },
+    }));
+
+    return {
+      $: {
+        ID: nextId(),
+        TYPE: "ARTICLE",
+        LABEL: art.title || `Article ${i + 1}`,
+        DMDID: `MODSMD_ARTICLE${i + 1}`, // matches your makeIssueDmdSec; remove if undesired
+      },
+      ...(art.url
+        ? { mptr: { $: { "xlink:href": art.url, "xmlns:xlink": "http://www.w3.org/1999/xlink" } } }
+        : {}),
+      // Minimal nesting: ARTICLE → BODY → BODY_CONTENT → TEXT → fptr(seq of ALTO areas)
+      div: {
+        $: { ID: nextId(), TYPE: "BODY" },
+        div: {
+          $: { ID: nextId(), TYPE: "BODY_CONTENT" },
+          div: {
+            $: { ID: nextId(), TYPE: "TEXT" },
+            fptr: { seq: { area: areas } },
+          },
+        },
+      },
+    };
+  });
+
+  // CONTENT container holding the articles
+  const contentDiv = {
+    $: { ID: nextId(), TYPE: "CONTENT" },
+    div: articleDivs,
+  };
+
+  // ISSUE (no title section), then VOLUME, then Newspaper
+  const issueDiv = {
+    $: {
+      ID: nextId(),
+      TYPE: "ISSUE",
+      DMDID: issueDmdId,
+      LABEL: newspaperLabel || "Issue",
+    },
+    div: contentDiv,
+  };
+
+  const volumeDiv = {
+    $: {
+      ID: nextId(),
+      TYPE: "VOLUME",
+      DMDID: (volumeDmdIds || []).join(" "),
+      LABEL: newspaperLabel || "Volume",
+    },
+    div: issueDiv,
+  };
+
+  const newspaperDiv = {
+    $: {
+      ID: nextId(),
+      TYPE: "Newspaper",
+      LABEL: newspaperLabel || "Newspaper",
+    },
+    div: volumeDiv,
+  };
+
+  // Return LOGICAL structMap only (combine with your PHYSICAL elsewhere)
+  return {
+    structMap: {
+      $: { LABEL: "Logical Structure", TYPE: "LOGICAL", xmlns: "http://www.loc.gov/METS/" },
+      div: newspaperDiv,
+    },
+  };
+}
+
+function makePhysicalStructMap({
+  numPages,
+  rootLabel = "Physical Structure",
+  newspaperLabel = "The Daily Princetonian",
+  newspaperType = "Newspaper",
+  dmdIds = ["MODSMD_PRINT", "MODSMD_ELEC"],
+}) {
+  if (!Number.isInteger(numPages) || numPages < 1) return {};
+
+  const pad5 = (n) => String(n).padStart(5, "0");
+
+  const pageDivs = [];
+  for (let p = 1; p <= numPages; p++) {
+    const divId = `DIVP${p + 1}`;
+    const attrs = {
+      ID: divId,
+      ORDER: String(p),
+      ORDERLABEL: String(p),
+      TYPE: "PAGE",
+    };
+    if (p > 1) attrs.LABEL = String(p);
+
+    pageDivs.push({
+      $: attrs,
+      fptr: {
+        par: {
+          area: [
+            { $: { FILEID: `IMG${pad5(p)}` } },
+            // Anchor to the ALTO Page ID you generate: ID="page_${p}"
+            { $: { FILEID: `ALTO${pad5(p)}`, BETYPE: "IDREF", BEGIN: `page_${p}` } },
+          ],
+        },
+      },
+    });
+  }
+
+  return {
+    structMap: {
+      $: { LABEL: rootLabel, TYPE: "PHYSICAL", xmlns: "http://www.loc.gov/METS/" },
+      div: {
+        $: {
+          ID: "DIVP1",
+          LABEL: newspaperLabel,
+          TYPE: newspaperType,
+          ...(dmdIds?.length ? { DMDID: dmdIds.join(" ") } : {}),
+        },
+        div: pageDivs,
+      },
+    },
+  };
+}
+
 // --- helper: normalize an image entry (string -> { href }) ---
 function normImg(entry) {
   if (typeof entry === "string") return { href: entry };
@@ -260,14 +406,14 @@ function makeIssueAmdSec({ imageFiles = [] }) {
   return { "mets:amdSec": amdSecs.map(x => x["mets:amdSec"]) };
 }
 
-function formatLabel(date) {
+function formatLabel(date, issueNumber) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0"); // JS months are 0-based
   const year = date.getFullYear();
-  return `The Daily Princetonian ${day}.${month}.${year}`;
+  return `The Daily Princetonian no. ${issueNumber} ${day}.${month}.${year}`;
 }
 
-function buildRootAttrs({ issueDate }) {
+function buildRootAttrs({ issueDate, issueNumber }) {
   return {
     "xmlns:mets": "http://www.loc.gov/METS/",
     "xmlns:xlink": "http://www.w3.org/1999/xlink",
@@ -277,7 +423,7 @@ function buildRootAttrs({ issueDate }) {
     "xsi:schemaLocation":
       "http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd",
     TYPE: "Newspaper",
-    LABEL: formatLabel(issueDate),
+    LABEL: formatLabel(issueDate, issueNumber),
   };
 }
 
@@ -428,12 +574,23 @@ export const generateMetsFile = ({
   dir, 
   downloadLocally = true,
   imageFiles,
-  altoFiles
+  altoFiles,
+  issueNumber,
+  volumeNumber
   }) => {
+
+  const phys = makePhysicalStructMap({
+    numPages: imageFiles?.length
+  });
+
+  const logical = makeLogicalStructMap({
+    articles: articlesData,
+    newspaperLabel: formatLabel(issueDate, issueNumber),
+  });
   
   const metsXmlObject = {
     "mets:mets": {
-      $: buildRootAttrs({ issueDate }),
+      $: buildRootAttrs({ issueDate, issueNumber }),
       ...buildMetsHdr({
         created: new Date(),
         agentName: "Automated Articles Issue Archiver",
@@ -441,8 +598,8 @@ export const generateMetsFile = ({
       }),
       ...makeIssueDmdSec({
         issueDate,
-        volumeNumber: 147,
-        issueNumber: 1,
+        volumeNumber,
+        issueNumber,
         articles: articlesData,
       }),
       ...makeIssueAmdSec({ imageFiles }),
@@ -450,73 +607,12 @@ export const generateMetsFile = ({
         images: imageFiles,
         alto: altoFiles,
       }),
-      // (optional) keep/add your structMap here
+      "mets:structMap": [
+        phys.structMap,    // PHYSICAL
+        logical.structMap, // LOGICAL
+      ],
     },
   };
-
-  
-/*
-    "mets:fileSec": {
-      "mets:fileGrp": [
-          {
-            $: { USE: "PDF" },
-            "mets:file": {
-              $: {
-                ID: "full_pdf",
-                MIMETYPE: "application/pdf",
-              },
-              "mets:FLocat": {
-                $: {
-                  "xlink:href": `dailyprince-issue_${formatTimestamp(new Date())}.pdf`,
-                },
-              },
-            },
-          },
-          {
-            $: { USE: "ALTO" },
-            "mets:file": articlesData.flatMap((article) =>
-              article.pages.map((page) => ({
-                $: {
-                  ID: `alto_${page}`,
-                  MIMETYPE: "text/xml",
-                },
-                "mets:FLocat": {
-                  $: {
-                    "xlink:href": `page_${page}.alto.xml`,
-                  },
-                },
-              }))
-            ),
-          },
-        ],
-      },
-      "mets:structMap": {
-        $: { TYPE: "logical" },
-        "mets:div": articlesData.map((article, idx) => ({
-          $: {
-            TYPE: "article",
-            LABEL: article.title,
-          },
-          "mets:mptr": {
-            $: {
-              "xlink:href": article.url,
-            },
-          },
-          "mets:div": article.pages.map((page) => ({
-            $: {
-              TYPE: "page",
-              LABEL: `Page ${page}`,
-            },
-            "mets:fptr": {
-              $: {
-                FILEID: `alto_${page}`,
-              },
-            },
-          })),
-        })),
-    },
-  };
-  */
 
   const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  ", newline: "\n" } });
   const xmlString = builder.buildObject(metsXmlObject);
@@ -529,19 +625,4 @@ export const generateMetsFile = ({
     buffer: xmlString,
     name: "mets.xml",
   };
-};
-
-export const extractText = async ({ buffer }) => {
-  const pdfExtract = new PDFExtract();
-  const options = {};
-  const data = await pdfExtract.extractBuffer(buffer, options);
-  const pages = [];
-  for (const page of data.pages) {
-    const text = page.content.map((content) => content.str).join(" ");
-    pages.push({
-      text: text,
-      number: page.pageInfo.num,
-    });
-  }
-  return pages;
 };
