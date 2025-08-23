@@ -148,8 +148,8 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
   // Set up for handler use
   regularUrls = orderedUrls;
   
-  // Pass URLs (back-compat) AND structured articles with title + content
-  dailyPrinceHandler({ 
+  // Pass articles to handler and return its result
+  const result = await dailyPrinceHandler({ 
     event: { 
       today,
       articles: orderedUrls.map(({ url, headline, content }) => ({
@@ -159,6 +159,17 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
       }))
     } 
   });
+
+  // Print a summary of the results instead of the full object with base64 data
+  console.log('\nArchive Generation Results:');
+  console.log(`Issue Name: ${result.issueName}`);
+  console.log(`Issue Date: ${result.issueDate}`);
+  console.log('\nArtifacts generated:');
+  console.log(`- PDF: ${result.artifacts.pdf.name}`);
+  console.log(`- METS: ${result.artifacts.mets.name}`);
+  console.log(`- ALTO files: ${result.artifacts.alto.length} files`);
+  
+  return result;
 };
 
 export function stripHtml(html = "") {

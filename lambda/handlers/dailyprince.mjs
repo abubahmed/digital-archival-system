@@ -18,7 +18,7 @@ import { stripHtml } from "./../util/daily_run.mjs";
 dotenv.config();
 
 export const dailyPrinceHandler = async ({ event, callback, context }) => {
-  const local = process.env.LOCAL;
+  const local = false;
   const bucketName = process.env.AWS_BUCKET_NAME;
 
   // Use articles only (url + optional title/content)
@@ -39,8 +39,16 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   const s3Client = instantiateS3();
   log.info("AWS S3 client instantiated");
   const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--disable-web-security", "--allow-insecure-localhost"],
+    headless: "new",
+    executablePath: process.env.CHROME_PATH || undefined,
+    args: [
+      "--disable-web-security",
+      "--allow-insecure-localhost",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu"
+    ],
   });
   log.info("Puppeteer client instantiated");
 
@@ -95,6 +103,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     dpi: 400,
     quality: 90,
     generateImages : false,
+    writeToDisk: false,
   });
   log.info("Merged PDF buffer created");
 
@@ -121,9 +130,6 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   // 'pages' is the array of JP2 file paths returned by pdfToJpegs, so total pages:
   const totalPages = pages.length;
 
-  const altoDir = path.join(path.dirname(pdfPath), "alto");
-  fs.mkdirSync(altoDir, { recursive: true });
-
   const altoBuffers = [];
   const altoFiles = [];
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -133,14 +139,14 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     const sourceImageName = `page-${String(pageNum).padStart(4, "0")}.jp2`;
 
     const { altoBuffer, name } = generateAltoFile({
-      dir: path.join(issueName, "alto"),
+      dir: path.posix.join(issueName, "alto"),
       pageText,                 // empty string => blank ALTO (no TextBlock)
       pageId: pageNum,          // 1-based numbering
       pageWidth: pageWidthPx,
       pageHeight: pageHeightPx,
       measurementUnit: "pixel",
       sourceImage: sourceImageName,
-      downloadLocally: local,
+      downloadLocally: false,
       // schema: "v4", // or "docworks14" if you need that flavor
     
     });
@@ -152,13 +158,10 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     );
     altoBuffers.push({ buffer: altoBuffer, name });
 
-    const baseDir = path.dirname(pdfPath);
-    const absPath = path.join(baseDir, "alto", name); // on-disk path
     const relHref = `file://./alto/${name}`;
     
     altoFiles.push({
       page: pageNum,
-      path: absPath,
       relHref,
       name,
       mimetype: "text/xml",
@@ -169,7 +172,6 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
 
   const imageFiles = pages.map((p, idx) => ({
     page: idx + 1,            // 1-based page number
-    path: p,                  // absolute JP2 path (or placeholder path)
     relHref: `file://./images/${path.basename(p)}`,
     name: path.basename(p),   // e.g., page-0001.jp2
   }));
@@ -179,13 +181,28 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     articlesData,
     issueDate: event.today,
     dir: issueName,
-    downloadLocally: local,
+    downloadLocally: false,
     imageFiles,
     altoFiles,
     issueNumber: 1,
     volumeNumber: 147, // hardcoded for now; update as needed
   });
   log.info("METS file generated");
+
+  return {
+    ok: true,
+    issueName,
+    issueDate: event.today?.toISOString?.().slice(0,10),
+    artifacts: {
+      pdf: { name: `${issueName}.pdf`, data: Buffer.from(mergedPdfBytes).toString("base64") },
+      mets: { name: "mets.xml", data: Buffer.from(metsResponse.buffer, "utf-8").toString("base64") },
+      alto: altoBuffers.map(({ buffer, name }) => ({
+        name,
+        data: buffer.toString("base64"),
+      })),
+      // images: [] // (none, since we didn’t render JP2s)
+    }
+  };
 
   /*
   // Upload the merged PDF buffer, METS file, and ALTO files to S3
@@ -305,30 +322,41 @@ export const mergePDFBuffers = async ({
   dir,
   dpi = 400,
   quality = 90,
-  generateImages = false, // <-- set to true to actually write JP2s
+  generateImages = false,
+  writeToDisk = false,
 }) => {
   const mergedPdf = await PDFDocument.create();
+
   for (const buffer of buffers) {
     const pdf = await PDFDocument.load(buffer);
     const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
     copiedPages.forEach((p) => mergedPdf.addPage(p));
   }
 
-  // We can get the count before/after save; either is fine.
-  const pageCount = mergedPdf.getPageCount();
   const mergedPdfBytes = await mergedPdf.save();
+  const pageCount = mergedPdf.getPageCount();
 
-  const baseDir = path.resolve(process.cwd(), "documents", dir);
-  const pdfPath = path.join(baseDir, `${dir}.pdf`);
-  const imgOutDir = path.join(baseDir, "images");
+  let pdfPath;        // undefined when writeToDisk=false
+  let imgOutDir;      // always set (disk or logical path)
 
-  fs.mkdirSync(baseDir, { recursive: true });
-  fs.mkdirSync(imgOutDir, { recursive: true }); // ensure dir exists even if we skip images
-  fs.writeFileSync(pdfPath, mergedPdfBytes);
+  if (writeToDisk) {
+    const baseDir = path.resolve(process.cwd(), "documents", dir);
+    pdfPath = path.join(baseDir, `${dir}.pdf`);
+    imgOutDir = path.join(baseDir, "images");
+
+    fs.mkdirSync(baseDir, { recursive: true });
+    fs.mkdirSync(imgOutDir, { recursive: true });
+    fs.writeFileSync(pdfPath, mergedPdfBytes);
+  } else {
+    // logical folder name only; used for HREFs/ZIP paths
+    imgOutDir = path.posix.join("images");
+  }
 
   let pages;
   if (generateImages) {
-    // real JP2 generation
+    if (!writeToDisk) {
+      throw new Error("generateImages=true requires writeToDisk=true (needs a real pdfPath).");
+    }
     pages = await pdfToJpegs({
       pdfPath,
       outDir: imgOutDir,
@@ -336,10 +364,9 @@ export const mergePDFBuffers = async ({
       quality,
     });
   } else {
-    // placeholder filenames (not created) — consumers only need length;
-    // keeping the expected naming prevents downstream surprises.
+    // placeholders for METS/ZIP naming; no files written
     pages = Array.from({ length: pageCount }, (_, i) =>
-      path.join(imgOutDir, `page-${String(i + 1).padStart(4, "0")}.jp2`)
+      path.posix.join(imgOutDir, `page-${String(i + 1).padStart(4, "0")}.jp2`)
     );
   }
 
