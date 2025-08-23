@@ -4,10 +4,13 @@ import {
 } from "../handlers/dailyprince.mjs";
 import he from "he";
 
-export const createTodaysArchive = async ({ event, callback, context }) => {
-  // Taken from the Article Tracker apps script
+export const createTodaysArchive = async ({ event, callback, context } = { event: {} }) => {
+  const { day, month, year } = event || {};
 
-  const today = new Date("April 26, 2023 15:00:00");
+  // Build "today" from inputs at 15:00:00 local time (no timezone string)
+  const today = (() => {
+      return new Date(year, month - 1, day, 15, 0, 0, 0); // month is 0-indexed
+  })();
 
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
@@ -15,8 +18,6 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
 
-  //const yesterday = new Date("November 7, 2023 10:00:00");
-  // const yesterday = new Date(Date.now() - 86400000)
   const yestermonth =
     yesterday.getMonth() + 1 < 10
       ? "0" + (yesterday.getMonth() + 1)
@@ -180,4 +181,4 @@ export function stripHtml(html = "") {
     .replace(/>/g, "&gt;");
 }
 
-createTodaysArchive({});
+//createTodaysArchive({});
