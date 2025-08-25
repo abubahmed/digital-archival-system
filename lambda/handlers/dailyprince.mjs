@@ -23,14 +23,26 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
 
   // Use articles only (url + optional title/content)
   const { articles = [] } = event || {};
+  
+  // If no articles provided, return early with success but no content
   if (!Array.isArray(articles) || articles.length === 0) {
-    throw new Error("No articles provided in the event");
+    log.info("No articles found for this date");
+    return {
+      ok: true,
+      noContent: true,
+      message: "No articles found for this date"
+    };
   }
 
   // Filter out any malformed entries (missing url), but keep order
   const validArticles = articles.filter(a => a && typeof a.url === "string" && a.url.length > 0);
   if (validArticles.length === 0) {
-    throw new Error("No valid article URLs provided");
+    log.info("No valid article URLs found for this date");
+    return {
+      ok: true,
+      noContent: true,
+      message: "No valid article URLs found for this date"
+    };
   }
   if (validArticles.length !== articles.length) {
     log.warn(`Some articles were skipped due to missing/invalid url`);  }
@@ -94,8 +106,9 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       }
     }
 
+    // If we had valid articles but couldn't capture any of them, that's a failure
     if (articlesData.length === 0) {
-      throw new Error("Failed to capture any articles successfully");
+      throw new Error(`Failed to capture any of the ${validArticles.length} articles. Please check the logs for specific errors.`);
     }
   } finally {
     await browser.close();

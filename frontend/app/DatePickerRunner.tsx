@@ -44,7 +44,19 @@ export default function DatePickerRunner() {
         throw new Error(text || `Request failed with status ${res.status}`);
       }
 
-      // Get the filename from the Content-Disposition header
+      // Check if it's JSON (no content case) or ZIP (success with content)
+      const contentType = res.headers.get('Content-Type') || '';
+      
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.noContent) {
+          setStatus("Done");
+          setDetails(data.message || "No articles found for this date");
+          return;
+        }
+      }
+
+      // If we get here, it's a ZIP file
       const disposition = res.headers.get('Content-Disposition');
       const filename = disposition?.split('filename=')[1]?.replace(/"/g, '') || `dailyprince-${date}.zip`;
 
@@ -61,6 +73,7 @@ export default function DatePickerRunner() {
 
       setStatus("Archive downloaded successfully");
       setDetails("Archive has been generated and downloaded.");
+      setZipReady(true);
     } catch (err: any) {
       setStatus("Failed");
       setDetails(String(err?.message || err));

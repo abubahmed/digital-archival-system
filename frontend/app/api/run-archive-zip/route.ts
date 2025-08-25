@@ -111,8 +111,22 @@ export async function GET(req: Request) {
       return new Response("Invalid payload structure", { status: 500 });
     }
     
+    if (payload.noContent) {
+      // Return a 200 with a JSON response indicating no content
+      return new Response(JSON.stringify({
+        ok: true,
+        noContent: true,
+        message: payload.message || "No content available for this date"
+      }), { 
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+    
     if (!payload?.artifacts) {
-      console.error('No artifacts in payload:', payload);
+      console.error('Expected artifacts but none found in payload:', payload);
       return new Response("No artifacts in payload", { status: 500 });
     }
 
