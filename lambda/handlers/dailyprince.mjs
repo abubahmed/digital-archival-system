@@ -35,9 +35,6 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   if (validArticles.length !== articles.length) {
     log.warn(`Some articles were skipped due to missing/invalid url`);  }
 
-  // Instantiate AWS S3 and Puppeteer client
-  const s3Client = instantiateS3();
-  log.info("AWS S3 client instantiated");
   const browser = await puppeteer.launch({
     headless: "new",
     executablePath: process.env.CHROME_PATH || undefined,
@@ -50,7 +47,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       "--disable-gpu"
     ],
   });
-  log.info("Puppeteer client instantiated");
+  //log.info("Puppeteer client instantiated");
 
   // Capture articles from the provided list
   let startingPage = 1;
@@ -258,13 +255,11 @@ const captureArticle = async ({
     },
   ];
   await page.setCookie(...cookies);
-  console.log(`Attempting to load URL: ${url}`);
   try {
     await page.goto(url, {
       timeout: 120000,
       waitUntil: ["networkidle2", "domcontentloaded"],
     });
-    console.log(`Successfully loaded URL: ${url}`);
   } catch (error) {
     console.error(`Error loading URL ${url}:`, error);
     throw error;

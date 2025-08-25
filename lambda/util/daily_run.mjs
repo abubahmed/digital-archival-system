@@ -160,16 +160,7 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
     } 
   });
 
-  // Print a readable summary to the logs
-  console.log('\nArchive Generation Results:');
-  console.log(`Issue Name: ${result.issueName}`);
-  console.log(`Issue Date: ${result.issueDate}`);
-  console.log('\nArtifacts generated:');
-  console.log(`- PDF: ${result.artifacts.pdf?.name} (${result.artifacts.pdf?.data ? 'with data' : 'no data'})`);
-  console.log(`- METS: ${result.artifacts.mets?.name} (${result.artifacts.mets?.data ? 'with data' : 'no data'})`);
-  console.log(`- ALTO files: ${result.artifacts.alto?.length} files`);
-  
-  // Ensure we're outputting valid JSON for parseLastJson in the frontend
+  // Prepare output with success flag
   const output = { ok: true, ...result };
   
   // Output a distinct marker before the JSON to help with debugging
