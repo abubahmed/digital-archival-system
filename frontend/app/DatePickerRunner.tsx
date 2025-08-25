@@ -28,28 +28,39 @@ export default function DatePickerRunner() {
     return "(success)";
   }
 
-  async function runArchive() {
+  async function generateArchive() {
     try {
       setIsRunning(true);
-      setZipReady(false);
-      setStatus("Running…");
+      setStatus("Generating archive...");
       setDetails("");
 
-      const url = `/api/run-archive${debug ? "?debug=1" : ""}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.error || `Request failed with status ${res.status}`);
+      // Instead of making a separate API call, we'll trigger the download directly
+      // The zip endpoint handles both generation and download
+      const url = `/api/run-archive-zip?date=${date}${debug ? "&debug=1" : ""}`;
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Request failed with status ${res.status}`);
       }
 
-      setStatus("Done");
-      setDetails(prettyDetails(data));
-      setZipReady(true);
+      // Get the filename from the Content-Disposition header
+      const disposition = res.headers.get('Content-Disposition');
+      const filename = disposition?.split('filename=')[1]?.replace(/"/g, '') || `dailyprince-${date}.zip`;
+
+      // Create a download link and click it
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+
+      setStatus("Archive downloaded successfully");
+      setDetails("Archive has been generated and downloaded.");
     } catch (err: any) {
       setStatus("Failed");
       setDetails(String(err?.message || err));
@@ -91,21 +102,12 @@ export default function DatePickerRunner() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={runArchive}
+                onClick={generateArchive}
                 disabled={isRunning || !date}
                 className="mt-2 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-white bg-black hover:bg-gray-900 disabled:opacity-50"
               >
-                {isRunning ? "Running…" : "Run archive"}
+                {isRunning ? "Generating..." : "Generate Archive"}
               </button>
-
-              {zipReady && (
-                <a
-                  href={`/api/run-archive-zip?date=${date}`}
-                  className="mt-2 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-white bg-black hover:bg-gray-900"
-                >
-                  Download .zip
-                </a>
-              )}
             </div>
 
             <div className="mt-4">

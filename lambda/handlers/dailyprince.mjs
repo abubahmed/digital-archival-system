@@ -258,10 +258,17 @@ const captureArticle = async ({
     },
   ];
   await page.setCookie(...cookies);
-  await page.goto(url, {
-    timeout: 120000,
-    waitUntil: ["networkidle2", "domcontentloaded"],
-  });
+  console.log(`Attempting to load URL: ${url}`);
+  try {
+    await page.goto(url, {
+      timeout: 120000,
+      waitUntil: ["networkidle2", "domcontentloaded"],
+    });
+    console.log(`Successfully loaded URL: ${url}`);
+  } catch (error) {
+    console.error(`Error loading URL ${url}:`, error);
+    throw error;
+  }
   await page.evaluate(
     (header, footer) => {
       let targetElements = "related";

@@ -9,7 +9,13 @@ function assertExists(p, label) {
   if (!fs.existsSync(p)) throw new Error(`${label} not found: ${p}`);
 }
 
-function runWithNode(scriptPath, args = [], { cwd } = {}) {
+interface RunResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+function runWithNode(scriptPath: string, args: string[] = [], { cwd } = {}): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptPath, ...args], {
       cwd,
@@ -18,22 +24,61 @@ function runWithNode(scriptPath, args = [], { cwd } = {}) {
       shell: false,
     });
     let stdout = "", stderr = "";
-    child.stdout.on("data", (d) => (stdout += d.toString()));
-    child.stderr.on("data", (d) => (stderr += d.toString()));
-    child.on("close", (code) => resolve({ code, stdout, stderr }));
+    
+    child.stdout.on("data", (d) => {
+      const data = d.toString();
+      stdout += data;
+      console.log(`[Child Process stdout] ${data}`);
+    });
+    
+    child.stderr.on("data", (d) => {
+      const data = d.toString();
+      stderr += data;
+      console.error(`[Child Process stderr] ${data}`);
+    });
+    
+    child.on("close", (code) => {
+      console.log(`Child process exited with code ${code}`);
+      resolve({ code, stdout, stderr });
+    });
   });
 }
 
 function parseLastJson(stdout = "") {
-  const matches = stdout.match(/{[\s\S]*}/g);
-  if (!matches) return null;
-  for (let i = matches.length - 1; i >= 0; i--) {
-    try { return JSON.parse(matches[i]); } catch {}
+  // Look for our marked JSON block
+  const markerMatch = stdout.match(/=== BEGIN ARCHIVE RESULT JSON ===\n([\s\S]*?)\n=== END ARCHIVE RESULT JSON ===/);
+  
+  if (markerMatch && markerMatch[1]) {
+    try {
+      return JSON.parse(markerMatch[1]);
+    } catch (e) {
+      console.error('Failed to parse marked JSON:', e);
+      // Fall through to legacy parsing
+    }
   }
+  
+  // Legacy fallback: Find the last complete JSON object in the output
+  const matches = stdout.match(/\{[^{}]*\{[^{}]*\}[^{}]*\}|\{[^{}]+\}/g);
+  if (!matches) {
+    console.error('No JSON objects found in output');
+    return null;
+  }
+  
+  // Try parsing from last to first to get the most recent complete JSON
+  for (let i = matches.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(matches[i]);
+    } catch (e) {
+      continue;
+    }
+  }
+  
+  console.error('Failed to parse any JSON objects from output');
   return null;
 }
 
-export async function GET(req) {
+export async function GET(req: Request) {
+  console.log('Starting ZIP download process...');
   try {
     const url = new URL(req.url);
     const date = url.searchParams.get("date");
@@ -57,14 +102,29 @@ export async function GET(req) {
     );
     if (code !== 0) return new Response((stderr || "Archive failed").trim(), { status: 500 });
 
+    console.log('Attempting to parse JSON from stdout');
     const payload = parseLastJson(stdout);
-    if (!payload?.ok || !payload?.artifacts) {
-      return new Response("No artifacts in output", { status: 500 });
+    console.log('Parsed payload:', payload);
+    
+    if (!payload?.ok) {
+      console.error('Payload missing or not ok:', payload);
+      return new Response("Invalid payload structure", { status: 500 });
+    }
+    
+    if (!payload?.artifacts) {
+      console.error('No artifacts in payload:', payload);
+      return new Response("No artifacts in payload", { status: 500 });
     }
 
     // Build ZIP in memory
     const zip = new JSZip();
     const root = `dailyprince-${date}`;
+    
+    console.log('Starting ZIP creation with artifacts:', {
+      hasPDF: !!payload.artifacts.pdf?.data,
+      hasMETS: !!payload.artifacts.mets?.data,
+      altoCount: payload.artifacts.alto?.length
+    });
 
     // PDF
     if (payload.artifacts.pdf?.data && payload.artifacts.pdf?.name) {
@@ -100,7 +160,7 @@ export async function GET(req) {
       compressionOptions: { level: 9 },
     });
 
-    return new Response(zipBytes, {
+    return new Response(Buffer.from(zipBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
@@ -109,6 +169,7 @@ export async function GET(req) {
       },
     });
   } catch (err) {
-    return new Response(String(err?.message || err), { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return new Response(errorMessage, { status: 500 });
   }
 }
