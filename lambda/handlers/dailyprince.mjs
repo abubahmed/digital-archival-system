@@ -73,19 +73,29 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       log.info(`No newsletter found for window [${new Date(anchorDate - 86400000).toISOString()} to ${anchorDate.toISOString()}]`);
     }
     for (const [index, art] of validArticles.entries()) {
-      const response = await captureArticle({
-        url: art.url,
-        browser,
-        header: index === 0,
-        footer: index === validArticles.length - 1,
-        startingPage,
-        // pass through metadata (optional)
-        title: art.title,
-        content: art.content,
-      });
-      log.info(`Captured article: ${art.url}`);
-      articlesData.push(response);
-      startingPage += response.pages.length;
+      try {
+        const response = await captureArticle({
+          url: art.url,
+          browser,
+          header: index === 0,
+          footer: index === validArticles.length - 1,
+          startingPage,
+          // pass through metadata (optional)
+          title: art.title,
+          content: art.content,
+        });
+        log.info(`Captured article: ${art.url}`);
+        articlesData.push(response);
+        startingPage += response.pages.length;
+      } catch (error) {
+        log.error(`Failed to capture article ${art.url}: ${error.message}`);
+        // Continue with next article instead of failing completely
+        continue;
+      }
+    }
+
+    if (articlesData.length === 0) {
+      throw new Error("Failed to capture any articles successfully");
     }
   } finally {
     await browser.close();
@@ -99,8 +109,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     dir: issueName,
     dpi: 400,
     quality: 90,
-    generateImages : false,
-    writeToDisk: false,
+    generateImages: true,
+    writeToDisk: true, // Need this true to generate images
   });
   log.info("Merged PDF buffer created");
 
@@ -197,7 +207,10 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
         name,
         data: buffer.toString("base64"),
       })),
-      // images: [] // (none, since we didn’t render JP2s)
+      images: pages.map(imagePath => ({
+        name: path.basename(imagePath),
+        data: fs.readFileSync(imagePath).toString("base64")
+      }))
     }
   };
 
@@ -241,28 +254,66 @@ const captureArticle = async ({
   content,
 }) => {
   let page;
-  page = await browser.newPage();
-  const domain = new URL(url).host;
-  const cookies = [
-    {
-      name: "max-age",
-      value: `${60 * 60 * 24 * 2}`,
-      url: url,
-      domain: domain,
-      path: "/",
-      expires: new Date().getTime(),
-      "max-age": 60 * 60 * 24 * 2,
-    },
-  ];
-  await page.setCookie(...cookies);
-  try {
-    await page.goto(url, {
-      timeout: 120000,
-      waitUntil: ["networkidle2", "domcontentloaded"],
-    });
-  } catch (error) {
-    console.error(`Error loading URL ${url}:`, error);
-    throw error;
+  let retries = 3; // Number of retries
+  let lastError;
+
+  while (retries > 0) {
+    try {
+      page = await browser.newPage();
+      const domain = new URL(url).host;
+      const cookies = [
+        {
+          name: "max-age",
+          value: `${60 * 60 * 24 * 2}`,
+          url: url,
+          domain: domain,
+          path: "/",
+          expires: new Date().getTime(),
+          "max-age": 60 * 60 * 24 * 2,
+        },
+      ];
+      await page.setCookie(...cookies);
+
+      // Set a shorter timeout for initial response
+      const response = await page.goto(url, {
+        timeout: 30000, // 30 seconds for initial response
+        waitUntil: "domcontentloaded" // Start with just DOM loaded
+      });
+
+      if (!response) {
+        throw new Error("No response received from page");
+      }
+
+      if (!response.ok()) {
+        throw new Error(`HTTP ${response.status()}: ${response.statusText()}`);
+      }
+
+      // Now wait for network to be idle, but with a longer timeout
+      await page.waitForNetworkIdle({ 
+        timeout: 60000, // 60 seconds for network idle
+        idleTime: 1000  // 1 second of no network activity
+      }).catch(() => {
+        log.warn(`Network did not become idle for ${url}, but continuing anyway`);
+      });
+
+      break; // If we get here, page loaded successfully
+    } catch (error) {
+      lastError = error;
+      retries--;
+      log.warn(`Failed to load ${url}, ${retries} retries remaining. Error: ${error.message}`);
+      
+      if (page) {
+        await page.close().catch(() => {}); // Ignore close errors
+      }
+      
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retry
+      }
+    }
+  }
+
+  if (retries === 0) {
+    throw new Error(`Failed to load ${url} after multiple attempts. Last error: ${lastError.message}`);
   }
   await page.evaluate(
     (header, footer) => {
