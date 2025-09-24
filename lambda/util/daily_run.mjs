@@ -9,19 +9,19 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
 
   // Build "today" from inputs at 15:00:00 local time (no timezone string)
   const today = (() => {
-      return new Date(year, month - 1, day, 15, 0, 0, 0); // month is 0-indexed
+      return new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0)); // month is 0-indexed
   })();
 
   // If we have end date parameters, use them; otherwise use today
   const endDate = endDay && endMonth && endYear ? 
-    new Date(endYear, endMonth - 1, endDay, 15, 0, 0, 0) : today;
+    new Date(Date.UTC(endYear, endMonth - 1, endDay, 15, 0, 0, 0)) : today;
 
   // yesterday = day before start date, tomorrow = day after end date
   const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
 
   const tomorrow = new Date(endDate);
-  tomorrow.setDate(endDate.getDate() + 1);
+  tomorrow.setUTCDate(endDate.getUTCDate() + 1);
 
   const yestermonth =
     yesterday.getMonth() + 1 < 10

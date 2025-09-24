@@ -66,7 +66,8 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   const articlesData = [];
 
   try {
-    const anchorDate = event.today instanceof Date ? event.today : new Date();
+    const anchorDate = new Date(event.today);
+    anchorDate.setUTCDate(event.today.getUTCDate() - 1);
     const endDate = event.endDate instanceof Date ? event.endDate : anchorDate;
     
     const newsletter = await getNewsletterForDate({ 

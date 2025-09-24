@@ -159,7 +159,7 @@ const captureNewsletter = async ({ url, browser }) => {
 
 export const getNewsletterForDate = async ({ date, endDate, browser }) => {
   let start, end;
-  
+  log.info(`[getNewsletterForDate] input -> date=${String(date)} | endDate=${String(endDate)}`);
   if (endDate) {
     // Date range provided
     start = date instanceof Date ? date : new Date(date);
