@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import JSZip from "jszip";
 
-function assertExists(p, label) {
+function assertExists(p: string, label: string) {
   if (!fs.existsSync(p)) throw new Error(`${label} not found: ${p}`);
 }
 
@@ -15,7 +15,11 @@ interface RunResult {
   stderr: string;
 }
 
-function runWithNode(scriptPath: string, args: string[] = [], { cwd } = {}): Promise<RunResult> {
+function runWithNode(
+  scriptPath: string,
+  args: string[] = [],
+  { cwd }: { cwd?: string } = {}
+): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptPath, ...args], {
       cwd,
@@ -39,7 +43,7 @@ function runWithNode(scriptPath: string, args: string[] = [], { cwd } = {}): Pro
     
     child.on("close", (code) => {
       console.log(`Child process exited with code ${code}`);
-      resolve({ code, stdout, stderr });
+      resolve({ code: code ?? -1, stdout, stderr });
     });
   });
 }
@@ -81,9 +85,24 @@ export async function GET(req: Request) {
   console.log('Starting ZIP download process...');
   try {
     const url = new URL(req.url);
+    // Support either single date (?date=YYYY-MM-DD) or range
     const date = url.searchParams.get("date");
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return new Response("Invalid or missing date (use YYYY-MM-DD)", { status: 400 });
+    const startQuery = url.searchParams.get("start") || url.searchParams.get("startDate");
+    const endQuery = url.searchParams.get("end") || url.searchParams.get("endDate");
+
+    const isValid = (s?: string | null) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+    let start: string | null = null;
+    let end: string | null = null;
+
+    if (date && isValid(date)) {
+      start = date;
+      end = date;
+    } else if (isValid(startQuery) && isValid(endQuery)) {
+      start = startQuery!;
+      end = endQuery!;
+    } else {
+      return new Response("Invalid or missing date(s). Use ?date=YYYY-MM-DD or ?start=YYYY-MM-DD&end=YYYY-MM-DD", { status: 400 });
     }
 
     // cwd is .../digital-archival-system/frontend
@@ -97,7 +116,7 @@ export async function GET(req: Request) {
     // Run the archiver (idempotent) and parse its manifest
     const { code, stdout, stderr } = await runWithNode(
       cliPath,
-      ["--date", date],
+      ["--start", start!, "--end", end!],
       { cwd: lambdaDir }
     );
     if (code !== 0) return new Response((stderr || "Archive failed").trim(), { status: 500 });
@@ -132,7 +151,8 @@ export async function GET(req: Request) {
 
     // Build ZIP in memory
     const zip = new JSZip();
-    const root = `dailyprince-${date}`;
+    const rangeSuffix = start === end ? start : `${start}_to_${end}`;
+    const root = `dailyprince-${rangeSuffix}`;
     
     console.log('Starting ZIP creation with artifacts:', {
       hasPDF: !!payload.artifacts.pdf?.data,
@@ -174,7 +194,7 @@ export async function GET(req: Request) {
       compressionOptions: { level: 9 },
     });
 
-    return new Response(Buffer.from(zipBytes), {
+  return new Response(Buffer.from(zipBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",

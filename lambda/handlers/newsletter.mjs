@@ -157,9 +157,18 @@ const captureNewsletter = async ({ url, browser }) => {
   return pdfBuffer;
 };
 
-export const getNewsletterForDate = async ({ date, browser }) => {
-  const end = date instanceof Date ? date : new Date(date);
-  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+export const getNewsletterForDate = async ({ date, endDate, browser }) => {
+  let start, end;
+  
+  if (endDate) {
+    // Date range provided
+    start = date instanceof Date ? date : new Date(date);
+    end = endDate instanceof Date ? endDate : new Date(endDate);
+  } else {
+    // Single date - use 24 hour window as before
+    end = date instanceof Date ? date : new Date(date);
+    start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  }
 
   const { newsletters } = await fetchNewslettersInWindow({ start, end, pageSize: 100 });
   if (!newsletters || newsletters.length === 0) return null;

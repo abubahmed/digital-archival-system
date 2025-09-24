@@ -5,18 +5,23 @@ import {
 import he from "he";
 
 export const createTodaysArchive = async ({ event, callback, context } = { event: {} }) => {
-  const { day, month, year } = event || {};
+  const { day, month, year, endDay, endMonth, endYear } = event || {};
 
   // Build "today" from inputs at 15:00:00 local time (no timezone string)
   const today = (() => {
       return new Date(year, month - 1, day, 15, 0, 0, 0); // month is 0-indexed
   })();
 
+  // If we have end date parameters, use them; otherwise use today
+  const endDate = endDay && endMonth && endYear ? 
+    new Date(endYear, endMonth - 1, endDay, 15, 0, 0, 0) : today;
+
+  // yesterday = day before start date, tomorrow = day after end date
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  const tomorrow = new Date(endDate);
+  tomorrow.setDate(endDate.getDate() + 1);
 
   const yestermonth =
     yesterday.getMonth() + 1 < 10
@@ -77,7 +82,9 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
       });
     }
 
-    if (published >= yesterday && published < today) {
+    // Include items published within the selected window:
+    // [startDate-1 day @ 15:00:00, endDate @ 15:00:00)
+    if (published >= yesterday && published < endDate) {
       // Grab headline and plain-text content (naive strip)
       const headline = stripHtml(item.headline);
       const contentHtml = item.content || item.body || "";
@@ -152,6 +159,7 @@ export const createTodaysArchive = async ({ event, callback, context } = { event
   const result = await dailyPrinceHandler({ 
     event: { 
       today,
+      endDate,
       articles: orderedUrls.map(({ url, headline, content }) => ({
         url,
         title: headline,

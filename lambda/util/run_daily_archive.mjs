@@ -17,24 +17,43 @@ dotenv.config({ path: path.join(LAMBDA_ROOT, ".env") });
 
 function die(msg, code = 1) { log.error(msg); process.exit(code); }
 
-// Usage: node util/run_daily_archive.mjs --date 2023-04-26
+// Usage: node util/run_daily_archive.mjs --start 2023-04-26 --end 2023-04-30
 const args = new Map(
   process.argv.slice(2).map((v, i, a) => (v.startsWith("--") ? [v.slice(2), a[i + 1]] : null)).filter(Boolean)
 );
-let date = args.get("date") || process.env.ARCHIVE_DATE;
+const startDate = args.get("start") || process.env.ARCHIVE_START_DATE;
+const endDate = args.get("end") || process.env.ARCHIVE_END_DATE || startDate; // If no end date, use start date
+
+function isValidDate(dateStr) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+}
 
 async function main() {
   log.info('Starting archive process');
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    log.error('Invalid date format');
-    die("Provide --date YYYY-MM-DD");
+  if (!startDate || !isValidDate(startDate)) {
+    log.error('Invalid start date format');
+    die("Provide --start YYYY-MM-DD");
   }
+
+  if (!endDate || !isValidDate(endDate)) {
+    log.error('Invalid end date format');
+    die("Provide --end YYYY-MM-DD");
+  }
+
+  const [startYear, startMonth, startDay] = startDate.split("-");
+  const [endYear, endMonth, endDay] = endDate.split("-");
   
-  const [y, m, d] = date.split("-");
   try {
-    log.info(`Processing date: ${date}`);
+    log.info(`Processing date range: ${startDate} to ${endDate}`);
     const result = await createTodaysArchive({
-      event: { day: Number(d), month: Number(m), year: Number(y) },
+      event: { 
+        day: Number(startDay), 
+        month: Number(startMonth), 
+        year: Number(startYear),
+        endDay: Number(endDay),
+        endMonth: Number(endMonth),
+        endYear: Number(endYear)
+      },
       callback: undefined,
       context: undefined,
     });

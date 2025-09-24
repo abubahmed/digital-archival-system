@@ -67,7 +67,13 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
 
   try {
     const anchorDate = event.today instanceof Date ? event.today : new Date();
-    const newsletter = await getNewsletterForDate({ date: anchorDate, browser });
+    const endDate = event.endDate instanceof Date ? event.endDate : anchorDate;
+    
+    const newsletter = await getNewsletterForDate({ 
+      date: anchorDate, 
+      endDate: endDate,
+      browser 
+    });
     if (newsletter) {
       const pages = Array.from({ length: newsletter.pageCount }, (_, i) => startingPage + i);
 
@@ -200,7 +206,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   // Generate METS file from merged PDF buffer and ALTO files
   const metsResponse = generateMetsFile({
     articlesData,
-    issueDate: event.today,
+    issueDate: endDate, // Use end date for METS issue date
     dir: issueName,
     downloadLocally: false,
     imageFiles,
@@ -230,7 +236,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   return {
     ok: true,
     issueName,
-    issueDate: event.today?.toISOString?.().slice(0,10),
+    issueDate: endDate?.toISOString?.().slice(0,10), // Use end date for response
     artifacts
   };
 

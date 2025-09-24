@@ -11,7 +11,11 @@ export default function DatePickerRunner() {
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
+  // Single date or range controls
+  const [isRange, setIsRange] = useState(false);
   const [date, setDate] = useState<string>(todayStr);
+  const [start, setStart] = useState<string>(todayStr);
+  const [end, setEnd] = useState<string>(todayStr);
   const [status, setStatus] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [details, setDetails] = useState<string>("");
@@ -34,9 +38,11 @@ export default function DatePickerRunner() {
       setStatus("Generating archive...");
       setDetails("");
 
-      // Instead of making a separate API call, we'll trigger the download directly
-      // The zip endpoint handles both generation and download
-      const url = `/api/run-archive-zip?date=${date}${debug ? "&debug=1" : ""}`;
+      // Build URL for single date or range
+      const qs = isRange
+        ? `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+        : `date=${encodeURIComponent(date)}`;
+      const url = `/api/run-archive-zip?${qs}${debug ? "&debug=1" : ""}`;
       const res = await fetch(url);
       
       if (!res.ok) {
@@ -56,9 +62,10 @@ export default function DatePickerRunner() {
         }
       }
 
-      // If we get here, it's a ZIP file
+  // If we get here, it's a ZIP file
       const disposition = res.headers.get('Content-Disposition');
-      const filename = disposition?.split('filename=')[1]?.replace(/"/g, '') || `dailyprince-${date}.zip`;
+      const label = isRange ? `${start}_to_${end}` : date;
+      const filename = disposition?.split('filename=')[1]?.replace(/"/g, '') || `dailyprince-${label}.zip`;
 
       // Create a download link and click it
       const blob = await res.blob();
@@ -88,21 +95,63 @@ export default function DatePickerRunner() {
         <div className="rounded-2xl shadow-lg border border-gray-200 p-6">
           <h1 className="text-2xl font-semibold mb-2">Create Daily Archive</h1>
           <p className="text-sm text-gray-600 mb-6">
-            Pick a date. We’ll run the archive for that calendar date using{" "}
-            <span className="font-mono">15:00:00</span> local time.
+            Pick a date or a range. We’ll run the archive for the selected window using <span className="font-mono">15:00:00</span> local time.
           </p>
 
           <div className="grid gap-4">
-            <label className="text-sm font-medium" htmlFor="date">Issue date</label>
-            <input
-              id="date"
-              type="date"
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              max={todayStr}
-              required
-            />
+            <div className="flex items-center gap-4">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="radio" name="mode" checked={!isRange} onChange={() => setIsRange(false)} />
+                Single day
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="radio" name="mode" checked={isRange} onChange={() => setIsRange(true)} />
+                Date range
+              </label>
+            </div>
+
+            {!isRange ? (
+              <div>
+                <label className="text-sm font-medium" htmlFor="date">Issue date</label>
+                <input
+                  id="date"
+                  type="date"
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  max={todayStr}
+                  required
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium" htmlFor="start">Start date</label>
+                  <input
+                    id="start"
+                    type="date"
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                    value={start}
+                    onChange={(e) => setStart(e.target.value)}
+                    max={end || todayStr}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium" htmlFor="end">End date</label>
+                  <input
+                    id="end"
+                    type="date"
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                    value={end}
+                    onChange={(e) => setEnd(e.target.value)}
+                    min={start}
+                    max={todayStr}
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
             <label className="inline-flex items-center gap-2 text-sm">
               <input
@@ -116,7 +165,7 @@ export default function DatePickerRunner() {
             <div className="flex items-center gap-2">
               <button
                 onClick={generateArchive}
-                disabled={isRunning || !date}
+                disabled={isRunning || (!isRange && !date) || (isRange && (!start || !end))}
                 className="mt-2 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-white bg-black hover:bg-gray-900 disabled:opacity-50"
               >
                 {isRunning ? "Generating..." : "Generate Archive"}
@@ -138,8 +187,7 @@ export default function DatePickerRunner() {
             </div>
 
             <p className="text-xs text-gray-500 mt-2">
-              Window: <span className="font-mono">yesterday 15:00:00</span> →{" "}
-              <span className="font-mono">selected date 15:00:00</span>.
+              Window: <span className="font-mono">start-1 day 15:00:00</span> → <span className="font-mono">end date 15:00:00</span> (for single day, start=end).
             </p>
           </div>
         </div>
