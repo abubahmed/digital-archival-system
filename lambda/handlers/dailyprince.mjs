@@ -117,13 +117,14 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   // Merge all captured articles into a single PDF buffer
   const issueName = `dailyprincetonian_${formatTimestamp(new Date())}`;
   const pdfBuffers = articlesData.map((article) => article.pdfBuffer);
+  const generateImages = process.env.GENERATE_IMAGES === 'true';  // Environment variable control for image generation
   const { mergedPdfBytes, pdfPath, imagesDir, pages } = await mergePDFBuffers({
     buffers: pdfBuffers,
     dir: issueName,
     dpi: 400,
     quality: 90,
-    generateImages: true,
-    writeToDisk: true, // Need this true to generate images
+    generateImages,
+    writeToDisk: generateImages, // Need this true to generate images
   });
   log.info("Merged PDF buffer created");
 
@@ -209,22 +210,28 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   });
   log.info("METS file generated");
 
+  const artifacts = {
+    pdf: { name: `${issueName}.pdf`, data: Buffer.from(mergedPdfBytes).toString("base64") },
+    mets: { name: "mets.xml", data: Buffer.from(metsResponse.buffer, "utf-8").toString("base64") },
+    alto: altoBuffers.map(({ buffer, name }) => ({
+      name,
+      data: buffer.toString("base64"),
+    }))
+  };
+  
+  // Only add images to artifacts if they were generated
+  if (generateImages) {
+    artifacts.images = pages.map(imagePath => ({
+      name: path.basename(imagePath),
+      data: fs.readFileSync(imagePath).toString("base64")
+    }));
+  }
+
   return {
     ok: true,
     issueName,
     issueDate: event.today?.toISOString?.().slice(0,10),
-    artifacts: {
-      pdf: { name: `${issueName}.pdf`, data: Buffer.from(mergedPdfBytes).toString("base64") },
-      mets: { name: "mets.xml", data: Buffer.from(metsResponse.buffer, "utf-8").toString("base64") },
-      alto: altoBuffers.map(({ buffer, name }) => ({
-        name,
-        data: buffer.toString("base64"),
-      })),
-      images: pages.map(imagePath => ({
-        name: path.basename(imagePath),
-        data: fs.readFileSync(imagePath).toString("base64")
-      }))
-    }
+    artifacts
   };
 
   /*

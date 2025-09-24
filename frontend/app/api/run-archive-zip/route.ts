@@ -147,7 +147,7 @@ export async function GET(req: Request) {
 
     // METS
     if (payload.artifacts.mets?.data && payload.artifacts.mets?.name) {
-      zip.file(`${root}/mets/${payload.artifacts.mets.name}`, Buffer.from(payload.artifacts.mets.data, "base64"));
+      zip.file(`${root}/${payload.artifacts.mets.name}`, Buffer.from(payload.artifacts.mets.data, "base64"));
     }
 
     // ALTO
