@@ -26,8 +26,45 @@ A Next.js frontend provides a simple UI to trigger an archive run for a single d
 - Node.js 20+
 - For newsletter capture: Mailchimp API key and access to the campaign archive
 - For optional S3 uploads: AWS credentials with write access to your bucket
-- For optional image generation (JP2): ImageMagick (`magick`) available on PATH
+ - For optional image generation (JP2): ImageMagick (`magick`) and Ghostscript (`gswin64c`) available on PATH
 - Windows users: run frontend in a shell that can spawn Node processes (PowerShell is fine)
+
+### Windows setup: ImageMagick + Ghostscript
+
+JP2 image generation from PDFs uses ImageMagick, which relies on Ghostscript to rasterize PDFs. Install both and ensure they are on PATH.
+
+1) Install Ghostscript (64-bit)
+- Download and install the 64-bit Ghostscript for Windows (gswin64c).
+- Verify in a new PowerShell window:
+
+```powershell
+# Should print Ghostscript version
+gswin64c -v
+```
+
+2) Install ImageMagick (64-bit)
+- Install ImageMagick 7 (Q16 x64).
+- During install, enable "Add application directory to your system PATH".
+- Verify in a new PowerShell window:
+
+```powershell
+# Should print ImageMagick version and delegates
+magick -version
+```
+
+3) PATH notes
+- Typical install paths (adjust versions):
+  - C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\
+  - C:\\Program Files\\gs\\gs10.03.1\\bin\\
+- If commands aren’t found, add them to PATH or set for the current session:
+
+```powershell
+$env:Path = "C:\\Program Files\\gs\\gs10.03.1\\bin;C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI;" + $env:Path
+```
+
+Troubleshooting
+- If PDFs fail to convert or you see "no delegate for this image format", confirm `gswin64c -v` works, then reinstall ImageMagick after Ghostscript so it detects it.
+- The code calls `magick` from `lambda/handlers/dailyprince.mjs` (pdfToJpegs); `magick` must be available on PATH.
 
 ## Environment variables
 
@@ -83,26 +120,6 @@ npm run dev
 
 Open http://localhost:3000 and use the form to pick a date or range. A ZIP will download on success, or a small JSON response will indicate "no content" for that window.
 
-## Running via CLI directly
-
-From `lambda/` you can invoke the range runner:
-
-```powershell
-# In lambda/
-node .\util\run_daily_archive.mjs --start 2025-09-01 --end 2025-09-01
-```
-
-This prints a JSON payload between markers and writes any requested files when image generation is enabled.
-
-You can also run specific handlers by setting `ARCHIVE_TYPE`:
-
-```powershell
-# In lambda/
-$env:ARCHIVE_TYPE = "newsletter"; node .\index.mjs
-$env:ARCHIVE_TYPE = "dailyprince"; node .\index.mjs
-$env:ARCHIVE_TYPE = "instagram"; node .\index.mjs
-```
-
 ## Troubleshooting
 
 - Frontend dev server fails to start
@@ -122,7 +139,6 @@ $env:ARCHIVE_TYPE = "instagram"; node .\index.mjs
 
 - The METS and ALTO generators aim for schema-friendly output (LoC ALTO v4; METS with MIX for images). Adjust in `lambda/util/mets_alto_dp.mjs` as needed.
 - Newsletter content is filtered via `filterNewsletterText` to remove boilerplate and tracking links.
-- getNewsletterForDate returns an array of newsletters in the window; callers should iterate and include each in order.
 
 ## License
 
