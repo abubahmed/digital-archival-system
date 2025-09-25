@@ -65,13 +65,15 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
   let startingPage = 1;
   const articlesData = [];
 
+  // Establish window: [startDate, endDate)
+  // startDate = (today - 1 day) at whatever time today carries; endDate = provided endDate or today
+  const startDate = new Date(event.today);
+  startDate.setUTCDate(event.today.getUTCDate() - 1);
+  const endDate = event.endDate instanceof Date ? event.endDate : new Date(event.today);
+
   try {
-    const anchorDate = new Date(event.today);
-    anchorDate.setUTCDate(event.today.getUTCDate() - 1);
-    const endDate = event.endDate instanceof Date ? event.endDate : anchorDate;
-    
     const newsletters = await getNewsletterForDate({ 
-      date: anchorDate, 
+      date: startDate, 
       endDate: endDate,
       browser 
     });
@@ -92,7 +94,7 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
       }
       log.info(`Prepended ${newsletters.length} newsletter(s).`);
     } else {
-      log.info(`No newsletter found for window [${new Date(anchorDate - 86400000).toISOString()} to ${anchorDate.toISOString()}]`);
+      log.info(`No newsletter found for window [${startDate.toISOString()} to ${endDate.toISOString()}]`);
     }
     for (const [index, art] of validArticles.entries()) {
       try {
