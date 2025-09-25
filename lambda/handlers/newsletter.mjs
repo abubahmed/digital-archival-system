@@ -173,32 +173,36 @@ export const getNewsletterForDate = async ({ date, endDate, browser }) => {
   const { newsletters } = await fetchNewslettersInWindow({ start, end, pageSize: 100 });
   if (!newsletters || newsletters.length === 0) return null;
 
-  const post = newsletters[newsletters.length - 1];
-  const url = post.long_archive_url;
-  const ts = new Date(post.send_time ?? post.create_time);
+  const results = [];
+  for (const post of newsletters) {
+    const url = post.long_archive_url;
+    const ts = new Date(post.send_time ?? post.create_time);
 
-  let contentText = "";
-  try {
-    const contentResp = await mailchimp.campaigns.getContent(post.id);
-    // Plain text version is often best:
-    contentText = contentResp.plain_text || "";
-    contentText = filterNewsletterText(contentText);
-  } catch (err) {
-    log.warn(`Could not fetch campaign content for ${post.id}: ${err.message}`);
+    let contentText = "";
+    try {
+      const contentResp = await mailchimp.campaigns.getContent(post.id);
+      // Plain text version is often best:
+      contentText = contentResp.plain_text || "";
+      contentText = filterNewsletterText(contentText);
+    } catch (err) {
+      log.warn(`Could not fetch campaign content for ${post.id}: ${err.message}`);
+    }
+
+    const pdfBuffer = await captureNewsletter({ url, browser });
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const pageCount = pdfDoc.getPageCount();
+
+    results.push({
+      pdfBuffer,
+      pageCount,
+      url,
+      title: post.settings?.subject_line || "Daily Newsletter",
+      content: contentText || post.settings?.preview_text || "",
+      ts,
+    });
   }
 
-  const pdfBuffer = await captureNewsletter({ url, browser });
-  const pdfDoc = await PDFDocument.load(pdfBuffer);
-  const pageCount = pdfDoc.getPageCount();
-
-  return {
-    pdfBuffer,
-    pageCount,
-    url,
-    title: post.settings?.subject_line || "Daily Newsletter",
-    content: contentText || post.settings?.preview_text || "",
-    ts,
-  };
+  return results;
 };
 
 export function filterNewsletterText(raw) {

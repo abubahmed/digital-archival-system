@@ -70,24 +70,27 @@ export const dailyPrinceHandler = async ({ event, callback, context }) => {
     anchorDate.setUTCDate(event.today.getUTCDate() - 1);
     const endDate = event.endDate instanceof Date ? event.endDate : anchorDate;
     
-    const newsletter = await getNewsletterForDate({ 
+    const newsletters = await getNewsletterForDate({ 
       date: anchorDate, 
       endDate: endDate,
       browser 
     });
-    if (newsletter) {
-      const pages = Array.from({ length: newsletter.pageCount }, (_, i) => startingPage + i);
+    if (Array.isArray(newsletters) && newsletters.length > 0) {
+      for (const nl of newsletters) {
+        const pages = Array.from({ length: nl.pageCount }, (_, i) => startingPage + i);
 
-      articlesData.push({
-        pdfBuffer: newsletter.pdfBuffer,
-        pages,
-        url: newsletter.url,
-        title: stripHtml(newsletter.title),
-        content: stripHtml(newsletter.content),
-      });
+        articlesData.push({
+          pdfBuffer: nl.pdfBuffer,
+          pages,
+          url: nl.url,
+          title: stripHtml(nl.title),
+          content: stripHtml(nl.content),
+        });
 
-      startingPage += newsletter.pageCount;
-      log.info(`Prepended newsletter (${newsletter.pageCount} pages)`);
+        startingPage += nl.pageCount;
+        log.info(`Prepended newsletter (${nl.pageCount} pages)`);
+      }
+      log.info(`Prepended ${newsletters.length} newsletter(s).`);
     } else {
       log.info(`No newsletter found for window [${new Date(anchorDate - 86400000).toISOString()} to ${anchorDate.toISOString()}]`);
     }
