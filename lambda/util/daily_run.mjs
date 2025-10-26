@@ -2,20 +2,27 @@ import {
   dailyPrinceHandler,
   mergePDFBuffers,
 } from "../handlers/dailyprince.mjs";
+import he from "he";
 
-export const createTodaysArchive = async ({ event, callback, context }) => {
-  // Taken from the Article Tracker apps script
+export const createTodaysArchive = async ({ event, callback, context } = { event: {} }) => {
+  const { day, month, year, endDay, endMonth, endYear } = event || {};
 
-  const today = new Date("April 11, 2023 15:00:00");
+  // Build "today" from inputs at 15:00:00 local time (no timezone string)
+  const today = (() => {
+      return new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0)); // month is 0-indexed
+  })();
 
+  // If we have end date parameters, use them; otherwise use today
+  const endDate = endDay && endMonth && endYear ? 
+    new Date(Date.UTC(endYear, endMonth - 1, endDay, 15, 0, 0, 0)) : today;
+
+  // yesterday = day before start date, tomorrow = day after end date
   const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
 
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  const tomorrow = new Date(endDate);
+  tomorrow.setUTCDate(endDate.getUTCDate() + 1);
 
-  //const yesterday = new Date("November 7, 2023 10:00:00");
-  // const yesterday = new Date(Date.now() - 86400000)
   const yestermonth =
     yesterday.getMonth() + 1 < 10
       ? "0" + (yesterday.getMonth() + 1)
@@ -54,20 +61,18 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
   let allItems = [...firstPageJson.items];
   
   // Fetch remaining pages
-  for(let page = 2; page <= totalPages; page++) {
+  for (let page = 2; page <= totalPages; page++) {
     const pageJson = await fetchPage(page);
     allItems = [...allItems, ...pageJson.items];
   }
 
   let regularUrls = [];
-  let promoUrls = [];
   let regularTagCounts = {};
   
   allItems.forEach((item) => {
     // Check if item has metadata and if any metadata has label "promo_url"
     const hasPromoUrl = item.metadata && item.metadata.some(meta => meta.label === "promo_url");
     const url = `https://www.dailyprincetonian.com/${item["uuid"]}`;
-    
     const published = new Date(item.published_at);
 
     // Only count tags for regular articles
@@ -76,15 +81,18 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
         regularTagCounts[tag.name] = (regularTagCounts[tag.name] || 0) + 1;
       });
     }
-    if (published >= yesterday && published < today) {
-      if (!hasPromoUrl) {
-        regularUrls.push({ url, headline: item.headline, tags: item.tags });
-      } else {
-        promoUrls.push({ url, headline: item.headline, tags: item.tags });
-      }
-    }
-    else{
 
+    // Include items published within the selected window:
+    // [startDate-1 day @ 15:00:00, endDate @ 15:00:00)
+    if (published >= yesterday && published < endDate) {
+      // Grab headline and plain-text content (naive strip)
+      const headline = stripHtml(item.headline);
+      const contentHtml = item.content || item.body || "";
+      const content = stripHtml(contentHtml);
+
+      if (!hasPromoUrl) {
+        regularUrls.push({ url, headline, tags: item.tags, content });
+      }
     }
   });
 
@@ -120,7 +128,7 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
     }
   });
 
-  // Create ordered list of URLs
+  // Create ordered list including title + content
   let orderedUrls = [];
   
   // Add articles in priority order
@@ -131,7 +139,8 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
         orderedUrls.push({
           url: item.url,
           category: category,
-          headline: item.headline
+          headline: item.headline,
+          content: item.content
         });
       });
     }
@@ -143,18 +152,51 @@ export const createTodaysArchive = async ({ event, callback, context }) => {
     console.log(`${index + 1}. [${item.category}] ${item.url}`);
   });
 
-  if (promoUrls.length > 0) {
-    console.log('\nFiltered Promo URLs:');
-    promoUrls.forEach(item => console.log(item.url));
-  }
-
-  console.log(`\nTotal: ${orderedUrls.length} articles (${promoUrls.length} promos filtered)`);
-  
   // Set up for handler use
   regularUrls = orderedUrls;
   
-  // Commented out handler
-  dailyPrinceHandler({ event: { webUrls: orderedUrls.map(item => item.url) } });
+  // Pass articles to handler and return its result
+  const result = await dailyPrinceHandler({ 
+    event: { 
+      today,
+      endDate,
+      articles: orderedUrls.map(({ url, headline, content }) => ({
+        url,
+        title: headline,
+        content
+      }))
+    } 
+  });
+
+  // Prepare output with success flag
+  const output = { ok: true, ...result };
+  
+  // Output a distinct marker before the JSON to help with debugging
+  console.log('\n=== BEGIN ARCHIVE RESULT JSON ===');
+  console.log(JSON.stringify(output, null, 2));
+  console.log('=== END ARCHIVE RESULT JSON ===\n');
+  
+  return output;
 };
 
-createTodaysArchive({});
+export function stripHtml(html = "") {
+  let s = he.decode(html);
+
+  // 1. Convert block-level tags to a space
+  s = s.replace(/<\/?(p|div|br|li|section|tr|h[1-6])[^>]*>/gi, " ");
+
+  // 2. Remove all other tags completely (no space)
+  s = s.replace(/<[^>]*>/g, "");
+
+  // 3. Collapse whitespace
+  s = s.replace(/\s+/g, " ").trim();
+
+  // 4. Escape for XML attribute
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+//createTodaysArchive({});
