@@ -15,11 +15,7 @@ interface RunResult {
   stderr: string;
 }
 
-function runWithNode(
-  scriptPath: string,
-  args: string[] = [],
-  { cwd }: { cwd?: string } = {}
-): Promise<RunResult> {
+function runWithNode(scriptPath: string, args: string[] = [], { cwd }: { cwd?: string } = {}): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptPath, ...args], {
       cwd,
@@ -27,20 +23,21 @@ function runWithNode(
       stdio: ["ignore", "pipe", "pipe"],
       shell: false,
     });
-    let stdout = "", stderr = "";
-    
+    let stdout = "",
+      stderr = "";
+
     child.stdout.on("data", (d) => {
       const data = d.toString();
       stdout += data;
       console.log(`[Child Process stdout] ${data}`);
     });
-    
+
     child.stderr.on("data", (d) => {
       const data = d.toString();
       stderr += data;
       console.error(`[Child Process stderr] ${data}`);
     });
-    
+
     child.on("close", (code) => {
       console.log(`Child process exited with code ${code}`);
       resolve({ code: code ?? -1, stdout, stderr });
@@ -51,23 +48,23 @@ function runWithNode(
 function parseLastJson(stdout = "") {
   // Look for our marked JSON block
   const markerMatch = stdout.match(/=== BEGIN ARCHIVE RESULT JSON ===\n([\s\S]*?)\n=== END ARCHIVE RESULT JSON ===/);
-  
+
   if (markerMatch && markerMatch[1]) {
     try {
       return JSON.parse(markerMatch[1]);
     } catch (e) {
-      console.error('Failed to parse marked JSON:', e);
+      console.error("Failed to parse marked JSON:", e);
       // Fall through to legacy parsing
     }
   }
-  
+
   // Legacy fallback: Find the last complete JSON object in the output
   const matches = stdout.match(/\{[^{}]*\{[^{}]*\}[^{}]*\}|\{[^{}]+\}/g);
   if (!matches) {
-    console.error('No JSON objects found in output');
+    console.error("No JSON objects found in output");
     return null;
   }
-  
+
   // Try parsing from last to first to get the most recent complete JSON
   for (let i = matches.length - 1; i >= 0; i--) {
     try {
@@ -76,13 +73,13 @@ function parseLastJson(stdout = "") {
       continue;
     }
   }
-  
-  console.error('Failed to parse any JSON objects from output');
+
+  console.error("Failed to parse any JSON objects from output");
   return null;
 }
 
 export async function GET(req: Request) {
-  console.log('Starting ZIP download process...');
+  console.log("Starting ZIP download process...");
   try {
     const url = new URL(req.url);
     // Support either single date (?date=YYYY-MM-DD) or range
@@ -102,50 +99,51 @@ export async function GET(req: Request) {
       start = startQuery!;
       end = endQuery!;
     } else {
-      return new Response("Invalid or missing date(s). Use ?date=YYYY-MM-DD or ?start=YYYY-MM-DD&end=YYYY-MM-DD", { status: 400 });
+      return new Response("Invalid or missing date(s). Use ?date=YYYY-MM-DD or ?start=YYYY-MM-DD&end=YYYY-MM-DD", {
+        status: 400,
+      });
     }
 
     // cwd is .../digital-archival-system/frontend
     const lambdaDir = path.resolve(process.cwd(), "..", "lambda");
-    const cliPath   = path.join(lambdaDir, "util", "run_daily_archive.mjs");
+    const cliPath = path.join(lambdaDir, "util", "run_daily_archive.mjs");
 
     assertExists(lambdaDir, "Lambda cwd");
     assertExists(cliPath, "CLI script");
     assertExists(process.execPath, "Node binary");
 
     // Run the archiver (idempotent) and parse its manifest
-    const { code, stdout, stderr } = await runWithNode(
-      cliPath,
-      ["--start", start!, "--end", end!],
-      { cwd: lambdaDir }
-    );
+    const { code, stdout, stderr } = await runWithNode(cliPath, ["--start", start!, "--end", end!], { cwd: lambdaDir });
     if (code !== 0) return new Response((stderr || "Archive failed").trim(), { status: 500 });
 
-    console.log('Attempting to parse JSON from stdout');
+    console.log("Attempting to parse JSON from stdout");
     const payload = parseLastJson(stdout);
-    console.log('Parsed payload:', payload);
-    
+    console.log("Parsed payload:", payload);
+
     if (!payload?.ok) {
-      console.error('Payload missing or not ok:', payload);
+      console.error("Payload missing or not ok:", payload);
       return new Response("Invalid payload structure", { status: 500 });
     }
-    
+
     if (payload.noContent) {
       // Return a 200 with a JSON response indicating no content
-      return new Response(JSON.stringify({
-        ok: true,
-        noContent: true,
-        message: payload.message || "No content available for this date"
-      }), { 
-        status: 200,
-        headers: {
-          "Content-Type": "application/json"
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          noContent: true,
+          message: payload.message || "No content available for this date",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
     }
-    
+
     if (!payload?.artifacts) {
-      console.error('Expected artifacts but none found in payload:', payload);
+      console.error("Expected artifacts but none found in payload:", payload);
       return new Response("No artifacts in payload", { status: 500 });
     }
 
@@ -153,11 +151,11 @@ export async function GET(req: Request) {
     const zip = new JSZip();
     const rangeSuffix = start === end ? start : `${start}_to_${end}`;
     const root = `dailyprince-${rangeSuffix}`;
-    
-    console.log('Starting ZIP creation with artifacts:', {
+
+    console.log("Starting ZIP creation with artifacts:", {
       hasPDF: !!payload.artifacts.pdf?.data,
       hasMETS: !!payload.artifacts.mets?.data,
-      altoCount: payload.artifacts.alto?.length
+      altoCount: payload.artifacts.alto?.length,
     });
 
     // PDF
@@ -194,7 +192,7 @@ export async function GET(req: Request) {
       compressionOptions: { level: 9 },
     });
 
-  return new Response(Buffer.from(zipBytes), {
+    return new Response(Buffer.from(zipBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",

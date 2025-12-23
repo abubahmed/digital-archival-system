@@ -44,16 +44,16 @@ export default function DatePickerRunner() {
         : `date=${encodeURIComponent(date)}`;
       const url = `/api/run-archive-zip?${qs}${debug ? "&debug=1" : ""}`;
       const res = await fetch(url);
-      
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Request failed with status ${res.status}`);
       }
 
       // Check if it's JSON (no content case) or ZIP (success with content)
-      const contentType = res.headers.get('Content-Type') || '';
-      
-      if (contentType.includes('application/json')) {
+      const contentType = res.headers.get("Content-Type") || "";
+
+      if (contentType.includes("application/json")) {
         const data = await res.json();
         if (data.noContent) {
           setStatus("Done");
@@ -62,15 +62,15 @@ export default function DatePickerRunner() {
         }
       }
 
-  // If we get here, it's a ZIP file
-      const disposition = res.headers.get('Content-Disposition');
+      // If we get here, it's a ZIP file
+      const disposition = res.headers.get("Content-Disposition");
       const label = isRange ? `${start}_to_${end}` : date;
-      const filename = disposition?.split('filename=')[1]?.replace(/"/g, '') || `dailyprince-${label}.zip`;
+      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "") || `dailyprince-${label}.zip`;
 
       // Create a download link and click it
       const blob = await res.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = downloadUrl;
       a.download = filename;
       document.body.appendChild(a);
@@ -95,7 +95,8 @@ export default function DatePickerRunner() {
         <div className="rounded-2xl shadow-lg border border-gray-200 p-6">
           <h1 className="text-2xl font-semibold mb-2">Create Daily Archive</h1>
           <p className="text-sm text-gray-600 mb-6">
-            Pick a date or a range. We’ll run the archive for the selected window using <span className="font-mono">15:00:00</span> local time.
+            Pick a date or a range. We’ll run the archive for the selected window using{" "}
+            <span className="font-mono">15:00:00</span> local time.
           </p>
 
           <div className="grid gap-4">
@@ -112,7 +113,9 @@ export default function DatePickerRunner() {
 
             {!isRange ? (
               <div>
-                <label className="text-sm font-medium" htmlFor="date">Issue date</label>
+                <label className="text-sm font-medium" htmlFor="date">
+                  Issue date
+                </label>
                 <input
                   id="date"
                   type="date"
@@ -126,7 +129,9 @@ export default function DatePickerRunner() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium" htmlFor="start">Start date</label>
+                  <label className="text-sm font-medium" htmlFor="start">
+                    Start date
+                  </label>
                   <input
                     id="start"
                     type="date"
@@ -138,7 +143,9 @@ export default function DatePickerRunner() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium" htmlFor="end">End date</label>
+                  <label className="text-sm font-medium" htmlFor="end">
+                    End date
+                  </label>
                   <input
                     id="end"
                     type="date"
@@ -154,11 +161,7 @@ export default function DatePickerRunner() {
             )}
 
             <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={debug}
-                onChange={(e) => setDebug(e.target.checked)}
-              />
+              <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
               Show debug log
             </label>
 
@@ -166,8 +169,7 @@ export default function DatePickerRunner() {
               <button
                 onClick={generateArchive}
                 disabled={isRunning || (!isRange && !date) || (isRange && (!start || !end))}
-                className="mt-2 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-white bg-black hover:bg-gray-900 disabled:opacity-50"
-              >
+                className="mt-2 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-white bg-black hover:bg-gray-900 disabled:opacity-50">
                 {isRunning ? "Generating..." : "Generate Archive"}
               </button>
             </div>
@@ -187,7 +189,8 @@ export default function DatePickerRunner() {
             </div>
 
             <p className="text-xs text-gray-500 mt-2">
-              Window: <span className="font-mono">start-1 day 15:00:00</span> → <span className="font-mono">end date 15:00:00</span> (for single day, start=end).
+              Window: <span className="font-mono">start-1 day 15:00:00</span> →{" "}
+              <span className="font-mono">end date 15:00:00</span> (for single day, start=end).
             </p>
           </div>
         </div>
