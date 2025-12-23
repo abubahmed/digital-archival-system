@@ -93,19 +93,7 @@ export default function DatePickerRunner() {
     };
   }, [archivalType, date, start, end, mostRecentSince, mostRecentCount, normalizedUrls.length]);
 
-  const compatibility = useMemo(() => {
-    // Only the Daily Prince flow is wired to the existing local API endpoint.
-    const supportsLocalDownload =
-      source === "dailyPrince" && delivery === "download" && (archivalType === "singleDay" || archivalType === "dateRange");
-    if (supportsLocalDownload) {
-      return { level: "ok" as const, text: "This combo can run now (browser download) using the existing local endpoint." };
-    }
-
-    return {
-      level: "warn" as const,
-      text: "This configuration is UI-only for now (no API wiring). You can still preview inputs and simulate a run.",
-    };
-  }, [source, delivery, archivalType]);
+  // UI-only: no API wiring (by request).
 
   // Persist auth token locally (optional; UI only)
   useEffect(() => {
@@ -168,51 +156,6 @@ export default function DatePickerRunner() {
     };
   }
 
-  async function runLocalDailyPrinceDownload() {
-    // Preserve the existing behavior for Daily Prince (single day + date range).
-    const isRange = archivalType === "dateRange";
-    const qs = isRange
-      ? `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-      : `date=${encodeURIComponent(date)}`;
-    const url = `/api/run-archive-zip?${qs}${debug ? "&debug=1" : ""}`;
-
-    pushLog("info", `Requesting ${url}`);
-    const res = await fetch(url);
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Request failed with status ${res.status}`);
-    }
-
-    const contentType = res.headers.get("Content-Type") || "";
-    if (contentType.includes("application/json")) {
-      const data: unknown = await res.json();
-      const record = isRecord(data) ? data : null;
-      if (record?.noContent) {
-        return {
-          kind: "noContent" as const,
-          message: String(record.message || "No content found for selected window."),
-          raw: record,
-        };
-      }
-    }
-
-    const disposition = res.headers.get("Content-Disposition");
-    const label = isRange ? `${start}_to_${end}` : date;
-    const filename = disposition?.split("filename=")[1]?.replace(/"/g, "") || `dailyprince-${label}.zip`;
-
-    const blob = await res.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(downloadUrl);
-    document.body.removeChild(a);
-
-    return { kind: "downloaded" as const, filename };
-  }
-
   async function simulateRun() {
     // UI-only “fake” run: progress + logs.
     pushLog("info", "Starting simulated run (no API wiring).");
@@ -225,13 +168,8 @@ export default function DatePickerRunner() {
     pushLog("info", "Transforming + packaging…");
     await sleep(300);
 
-    if (delivery === "email") {
-      pushLog("info", `Queueing notification to ${email || "(missing email)"}`);
-      await sleep(250);
-    } else {
-      pushLog("info", "Preparing browser download…");
-      await sleep(250);
-    }
+    pushLog("info", delivery === "email" ? `Would email results to ${email || "(missing email)"}` : "Would prepare a browser download");
+    await sleep(250);
 
     pushLog("info", "Simulated run complete.");
   }
@@ -290,27 +228,6 @@ export default function DatePickerRunner() {
         return;
       }
 
-      const canRunLocally =
-        source === "dailyPrince" && delivery === "download" && (archivalType === "singleDay" || archivalType === "dateRange");
-      if (canRunLocally) {
-        pushLog("info", "Using local Daily Prince endpoint for download.");
-        const res = await runLocalDailyPrinceDownload();
-        if (res.kind === "noContent") {
-          setProgress(100);
-          setRunState("success");
-          setStatusText("Done (no content).");
-          setDetails(res.message);
-          pushLog("warn", res.message);
-          return;
-        }
-        setProgress(100);
-        setRunState("success");
-        setStatusText("Downloaded.");
-        setDetails(`Downloaded: ${res.filename}`);
-        pushLog("info", `Downloaded: ${res.filename}`);
-        return;
-      }
-
       await simulateRun();
       setProgress(100);
       setRunState("success");
@@ -337,8 +254,8 @@ export default function DatePickerRunner() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Archive Builder</h1>
               <p className="mt-1 text-sm text-gray-600">
-                Configure what to collect, how to package it, and how to receive it. Cutoff logic uses{" "}
-                <span className="font-mono">{String(CUTOFF_HOUR_LOCAL).padStart(2, "0")}:00</span> in server-local time.
+                UI-only builder for configuring an archive run (no API wiring yet). Cutoff logic previews use{" "}
+                <span className="font-mono">{String(CUTOFF_HOUR_LOCAL).padStart(2, "0")}:00</span> local time.
               </p>
             </div>
 
@@ -418,18 +335,6 @@ export default function DatePickerRunner() {
                         />
                       </div>
                     )}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {compatibility.level === "ok" ? "Runnable now" : "Preview / simulate"}
-                      </div>
-                      <div className="text-gray-700">{compatibility.text}</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -745,8 +650,8 @@ export default function DatePickerRunner() {
         </div>
 
         <footer className="mt-8 text-xs text-gray-500">
-          Note: “Daily Prince website” + “Browser download” + “Single day/Date range” is wired to the existing local endpoint. Everything else is a
-          UI preview + simulated run until you connect your APIs.
+          Note: This is intentionally UI-only. The “Generate archive” action simulates a run and outputs logs + a JSON config payload you can send to
+          your backend later.
         </footer>
       </div>
     </div>
@@ -857,8 +762,4 @@ function levelClass(level: "debug" | "info" | "warn" | "error") {
   if (level === "warn") return "text-amber-300";
   if (level === "debug") return "text-sky-300";
   return "text-emerald-300";
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
 }
