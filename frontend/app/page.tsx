@@ -7,8 +7,9 @@ import {
   computeWindowSingleDay,
   computeWindowRange,
   formatWindowPreview,
-  formatLocal,
-  dateToLocalDatetimeInput,
+  formatEst,
+  dateToEstDatetimeInput,
+  parseEstDatetimeInput,
 } from "./utils/dateHelpers";
 import { type LogLevel } from "./utils/logHelpers";
 import { validateBeforeRun } from "./utils/validation";
@@ -19,7 +20,21 @@ type Delivery = "download" | "email";
 type Schedule = "now" | "later";
 type RunState = "idle" | "running" | "success" | "error";
 
-const CUTOFF_HOUR_LOCAL = 15;
+export interface PastJob {
+  id: string;
+  createdAt: number;
+  config: {
+    source: Source;
+    archivalType: ArchivalType;
+    delivery: Delivery;
+  };
+  downloadUrl?: string;
+  state: RunState;
+  statusText: string;
+  progress: number;
+  logs: LogLine[];
+  details: string;
+}
 
 export default function Page() {
   // Core configuration
@@ -51,15 +66,15 @@ export default function Page() {
   // Most recent mode
   const [mostRecentCount, setMostRecentCount] = useState<number>(50);
   const [mostRecentSince, setMostRecentSince] = useState<string>(() => {
-    const d = new Date();
-    d.setHours(Math.min(CUTOFF_HOUR_LOCAL, 23), 0, 0, 0);
-    return dateToLocalDatetimeInput(d);
+    const d = new Date(Date.now());
+    // Set to current time in EST
+    return dateToEstDatetimeInput(d);
   });
 
   // Schedule
   const [scheduledFor, setScheduledFor] = useState<string>(() => {
     const d = new Date(Date.now() + 30 * 60 * 1000);
-    return dateToLocalDatetimeInput(d);
+    return dateToEstDatetimeInput(d);
   });
 
   // Auth
@@ -75,7 +90,143 @@ export default function Page() {
   const [details, setDetails] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
   const [logs, setLogs] = useState<LogLine[]>([]);
-  const [debug, setDebug] = useState<boolean>(false);
+
+  // Past jobs
+  const [pastJobs, setPastJobs] = useState<PastJob[]>([
+    {
+      id: "job-1",
+      createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
+      config: {
+        source: "dailyPrince",
+        archivalType: "singleDay",
+        delivery: "download",
+      },
+      downloadUrl: "/api/run-archive-zip?start=2025-01-20&end=2025-01-20",
+      state: "success",
+      statusText: "Done (simulated).",
+      progress: 100,
+      logs: [
+        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
+        {
+          ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 100,
+          level: "info",
+          msg: "Source: dailyPrince, Type: singleDay, Delivery: download",
+        },
+        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
+        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Fetching items..." },
+        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 800, level: "info", msg: "Processing items..." },
+        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 1100, level: "info", msg: "Archive process complete." },
+      ],
+      details: "Archive generated successfully for 2025-01-20",
+    },
+    {
+      id: "job-2",
+      createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
+      config: {
+        source: "newsletter",
+        archivalType: "dateRange",
+        delivery: "download",
+      },
+      downloadUrl: "/api/run-archive-zip?start=2025-01-15&end=2025-01-17",
+      state: "success",
+      statusText: "Done (simulated).",
+      progress: 100,
+      logs: [
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
+        {
+          ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 100,
+          level: "info",
+          msg: "Source: newsletter, Type: dateRange, Delivery: download",
+        },
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 500, level: "debug", msg: "Validating inputs..." },
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 750, level: "info", msg: "Fetching newsletters..." },
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 1050, level: "info", msg: "Processing items..." },
+        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 1350, level: "info", msg: "Archive process complete." },
+      ],
+      details: "Archive generated successfully for date range 2025-01-15 to 2025-01-17",
+    },
+    {
+      id: "job-3",
+      createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
+      config: {
+        source: "dailyPrinceIssues",
+        archivalType: "singleDay",
+        delivery: "download",
+      },
+      downloadUrl: "/api/run-archive-zip?start=2025-01-13&end=2025-01-13",
+      state: "success",
+      statusText: "Done (simulated).",
+      progress: 100,
+      logs: [
+        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
+        {
+          ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 100,
+          level: "info",
+          msg: "Source: dailyPrinceIssues, Type: singleDay, Delivery: download",
+        },
+        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
+        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
+      ],
+      details: "Archive generated successfully for 2025-01-13",
+    },
+    {
+      id: "job-4",
+      createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10 days ago
+      config: {
+        source: "instagram",
+        archivalType: "mostRecent",
+        delivery: "download",
+      },
+      downloadUrl: "/api/run-archive-zip?start=2025-01-10&end=2025-01-10",
+      state: "success",
+      statusText: "Done (simulated).",
+      progress: 100,
+      logs: [
+        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
+        {
+          ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 100,
+          level: "info",
+          msg: "Source: instagram, Type: mostRecent, Delivery: download",
+        },
+        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
+        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
+      ],
+      details: "Archive generated successfully",
+    },
+    {
+      id: "job-5",
+      createdAt: Date.now() - 14 * 24 * 60 * 60 * 1000, // 14 days ago
+      config: {
+        source: "twitter",
+        archivalType: "urls",
+        delivery: "email",
+      },
+      state: "success",
+      statusText: "Email sent.",
+      progress: 100,
+      logs: [
+        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
+        {
+          ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 100,
+          level: "info",
+          msg: "Source: twitter, Type: urls, Delivery: email",
+        },
+        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
+        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
+        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 600, level: "info", msg: "Email sent to user@example.com" },
+      ],
+      details: "Archive sent via email to user@example.com",
+    },
+  ]);
+
+  function openPastJob(job: PastJob) {
+    setRunState(job.state);
+    setStatusText(job.statusText);
+    setDetails(job.details);
+    setProgress(job.progress);
+    setLogs(job.logs);
+  }
 
   const isRunning = runState === "running";
 
@@ -98,11 +249,11 @@ export default function Page() {
       return w ? formatWindowPreview(w.start, w.end) : null;
     }
     if (archivalType === "mostRecent") {
-      const since = mostRecentSince ? new Date(mostRecentSince) : null;
+      const since = mostRecentSince ? parseEstDatetimeInput(mostRecentSince) : null;
       if (!since || Number.isNaN(since.getTime())) return null;
       return {
-        headline: "Selection window (local time)",
-        body: `Most recent ${mostRecentCount} items since ${formatLocal(since)}.`,
+        headline: "Selection window (EST)",
+        body: `Most recent ${mostRecentCount} items since ${formatEst(since)} EST.`,
       };
     }
     return {
@@ -148,14 +299,6 @@ export default function Page() {
 
   function pushLog(level: LogLevel, msg: string) {
     setLogs((prev) => [...prev, { ts: Date.now(), level, msg }]);
-  }
-
-  function resetRunOutput() {
-    setRunState("idle");
-    setStatusText("Ready.");
-    setDetails("");
-    setProgress(0);
-    setLogs([]);
   }
 
   const validationError = useMemo(
@@ -217,11 +360,29 @@ export default function Page() {
 
     try {
       if (schedule === "later") {
-        pushLog("info", `Scheduled for ${formatLocal(new Date(scheduledFor))} (simulation).`);
+        const scheduledDate = parseEstDatetimeInput(scheduledFor);
+        pushLog("info", `Scheduled for ${formatEst(scheduledDate)} EST (simulation).`);
         await sleep(800);
         setProgress(100);
         setRunState("success");
         setStatusText("Scheduled.");
+
+        // Add to past jobs
+        const jobId = `job-${Date.now()}`;
+        setPastJobs((prev) => [
+          {
+            id: jobId,
+            createdAt: Date.now(),
+            config: { source, archivalType, delivery },
+            downloadUrl: undefined,
+            state: "success",
+            statusText: "Scheduled.",
+            progress: 100,
+            logs: [...logs],
+            details: "",
+          },
+          ...prev,
+        ]);
         return;
       }
 
@@ -246,12 +407,58 @@ export default function Page() {
       setProgress(100);
       setRunState("success");
       setStatusText("Done (simulated).");
+
+      // Add to past jobs - capture current state values
+      const jobId = `job-${Date.now()}`;
+      let downloadUrl: string | undefined;
+      if (delivery === "download") {
+        if (archivalType === "singleDay") {
+          downloadUrl = `/api/run-archive-zip?start=${date}&end=${date}`;
+        } else if (archivalType === "dateRange") {
+          downloadUrl = `/api/run-archive-zip?start=${start}&end=${end}`;
+        } else {
+          // Dummy link for other types
+          downloadUrl = `/api/run-archive-zip?start=${todayStr}&end=${todayStr}`;
+        }
+      }
+      // Use functional update to capture current state
+      setPastJobs((prev) => [
+        {
+          id: jobId,
+          createdAt: Date.now(),
+          config: { source, archivalType, delivery },
+          downloadUrl,
+          state: "success",
+          statusText: "Done (simulated).",
+          progress: 100,
+          logs: [...logs],
+          details: details || "",
+        },
+        ...prev,
+      ]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setRunState("error");
       setStatusText("Failed.");
       setDetails(msg);
       pushLog("error", msg);
+
+      // Add to past jobs even on error
+      const jobId = `job-${Date.now()}`;
+      setPastJobs((prev) => [
+        {
+          id: jobId,
+          createdAt: Date.now(),
+          config: { source, archivalType, delivery },
+          downloadUrl: undefined,
+          state: "error",
+          statusText: "Failed.",
+          progress: progress,
+          logs: [...logs, { ts: Date.now(), level: "error", msg }],
+          details: msg,
+        },
+        ...prev,
+      ]);
     } finally {
       window.clearInterval(ticker);
       setProgress((p) => (p < 100 && runState !== "error" ? 100 : p));
@@ -266,26 +473,8 @@ export default function Page() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900">Archive Builder</h1>
               <p className="mt-2 text-sm text-gray-600">
-                Configure and generate archives from various sources. Times are in EST.
+                Configure and generate archives from various sources. All times are in EST (Eastern Standard Time).
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={resetRunOutput}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-                disabled={isRunning}>
-                Reset
-              </button>
-              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={debug}
-                  onChange={(e) => setDebug(e.target.checked)}
-                  className="rounded"
-                />
-                Debug
-              </label>
             </div>
           </div>
         </header>
@@ -336,7 +525,15 @@ export default function Page() {
             validationError={validationError}
           />
 
-          <StatusPanel runState={runState} statusText={statusText} progress={progress} logs={logs} details={details} />
+          <StatusPanel
+            runState={runState}
+            statusText={statusText}
+            progress={progress}
+            logs={logs}
+            details={details}
+            pastJobs={pastJobs}
+            onOpenJob={openPastJob}
+          />
         </div>
       </div>
     </div>

@@ -1,13 +1,7 @@
 "use client";
 
 import RadioCard from "./RadioCard";
-import {
-  computeWindowSingleDay,
-  computeWindowRange,
-  formatWindowPreview,
-  formatLocal,
-  isValidYmd,
-} from "../utils/dateHelpers";
+import { computeWindowSingleDay, computeWindowRange, formatWindowPreview, isValidYmd } from "../utils/dateHelpers";
 
 type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyPrince" | "dailyPrinceIssues";
 type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
@@ -118,7 +112,7 @@ export default function ConfigurationPanel({
           </label>
           <select
             id="source"
-            className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+            className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             value={source}
             onChange={(e) => setSource(e.target.value as Source)}>
             <option value="instagram">Instagram</option>
@@ -143,7 +137,7 @@ export default function ConfigurationPanel({
               checked={archivalType === "singleDay"}
               onChange={() => setArchivalType("singleDay")}
               title="Single day"
-              subtitle="Previous day start time → selected day end time (EST)"
+              subtitle="Start time → end time of selected day (EST)"
             />
             <RadioCard
               name="archivalType"
@@ -151,7 +145,7 @@ export default function ConfigurationPanel({
               checked={archivalType === "dateRange"}
               onChange={() => setArchivalType("dateRange")}
               title="Date range"
-              subtitle="Start-1 day start time → End day end time (EST)"
+              subtitle="Start time of start day → end time of end day (EST)"
             />
             <RadioCard
               name="archivalType"
@@ -185,7 +179,7 @@ export default function ConfigurationPanel({
                 <input
                   id="date"
                   type="date"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   max={todayStr}
@@ -200,7 +194,7 @@ export default function ConfigurationPanel({
                   <input
                     id="dateStartTime"
                     type="time"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={dateStartTime}
                     onChange={(e) => setDateStartTime(e.target.value)}
                   />
@@ -212,7 +206,7 @@ export default function ConfigurationPanel({
                   <input
                     id="dateEndTime"
                     type="time"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={dateEndTime}
                     onChange={(e) => setDateEndTime(e.target.value)}
                   />
@@ -231,7 +225,7 @@ export default function ConfigurationPanel({
                   <input
                     id="start"
                     type="date"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={start}
                     onChange={(e) => setStart(e.target.value)}
                     max={end || todayStr}
@@ -245,7 +239,7 @@ export default function ConfigurationPanel({
                   <input
                     id="end"
                     type="date"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={end}
                     onChange={(e) => setEnd(e.target.value)}
                     min={start}
@@ -262,7 +256,7 @@ export default function ConfigurationPanel({
                   <input
                     id="startTime"
                     type="time"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
@@ -274,7 +268,7 @@ export default function ConfigurationPanel({
                   <input
                     id="endTime"
                     type="time"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
                   />
@@ -296,7 +290,7 @@ export default function ConfigurationPanel({
               </div>
               <textarea
                 id="urls"
-                className="block min-h-32 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                className="block min-h-32 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-mono text-xs text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="https://example.com/post/123&#10;https://example.com/post/456"
                 value={urlsText}
                 onChange={(e) => setUrlsText(e.target.value)}
@@ -315,19 +309,19 @@ export default function ConfigurationPanel({
                   type="number"
                   min={1}
                   step={1}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={mostRecentCount}
                   onChange={(e) => setMostRecentCount(Number(e.target.value))}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700" htmlFor="since">
-                  Since (local datetime)
+                  Since (EST datetime)
                 </label>
                 <input
                   id="since"
                   type="datetime-local"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={mostRecentSince}
                   onChange={(e) => setMostRecentSince(e.target.value)}
                 />
@@ -336,8 +330,8 @@ export default function ConfigurationPanel({
           )}
 
           {windowPreview && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="text-xs font-medium text-gray-700">{windowPreview.headline}</div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 transition-colors">
+              <div className="text-sm font-medium text-gray-700">{windowPreview.headline}</div>
               <div className="mt-1 text-sm text-gray-900">{windowPreview.body}</div>
             </div>
           )}
@@ -367,12 +361,12 @@ export default function ConfigurationPanel({
           {schedule === "later" && (
             <div className="mt-3">
               <label className="block text-xs font-medium text-gray-700" htmlFor="scheduledFor">
-                Scheduled for (local datetime)
+                Scheduled for (EST datetime)
               </label>
               <input
                 id="scheduledFor"
                 type="datetime-local"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 value={scheduledFor}
                 onChange={(e) => setScheduledFor(e.target.value)}
               />
@@ -387,7 +381,7 @@ export default function ConfigurationPanel({
           </label>
           <select
             id="delivery"
-            className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+            className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             value={delivery}
             onChange={(e) => setDelivery(e.target.value as Delivery)}>
             <option value="download">Browser download</option>
@@ -402,7 +396,7 @@ export default function ConfigurationPanel({
                 id="email"
                 type="email"
                 inputMode="email"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="you@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -423,7 +417,7 @@ export default function ConfigurationPanel({
           <input
             id="token"
             type="password"
-            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             placeholder="Paste token here"
             value={authToken}
             onChange={(e) => setAuthToken(e.target.value)}
@@ -434,7 +428,7 @@ export default function ConfigurationPanel({
               type="checkbox"
               checked={rememberAuth}
               onChange={(e) => setRememberAuth(e.target.checked)}
-              className="rounded"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
             />
             Remember token in this browser (localStorage)
           </label>
