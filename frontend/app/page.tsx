@@ -6,6 +6,7 @@ import type { LogLine } from "../types";
 import { getTodayStr, getInitialMostRecentSince, getWindowPreview, getDownloadUrl } from "../utils/dateHelpers";
 import { type LogLevel, formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
+import { generateJobId } from "../utils/jobHelpers";
 import type { Source, ArchivalType, RunState, PastJob } from "../types";
 import { getInitialPastJobs } from "../data";
 
@@ -50,7 +51,11 @@ export default function Page() {
   // Past jobs
   const [pastJobs, setPastJobs] = useState<PastJob[]>(getInitialPastJobs());
 
-  // Currently displayed job (null = current job, string = past job ID)
+  // Current job ID and creation time (null when no job is running/completed)
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentJobCreatedAt, setCurrentJobCreatedAt] = useState<number | null>(null);
+
+  // Currently displayed job ID (always a string when a job exists)
   const [displayedJobId, setDisplayedJobId] = useState<string | null>(null);
 
   // Log viewport ref for auto-scrolling
@@ -65,14 +70,19 @@ export default function Page() {
 
   // Get currently displayed job info
   const displayedJob = useMemo(() => {
-    if (displayedJobId === null) {
+    if (!displayedJobId) return null;
+
+    // Check if it's the current job (using live state)
+    if (displayedJobId === currentJobId) {
       return {
         isCurrent: true,
         label: "Current job",
-        createdAt: Date.now(),
-        config: { source, archivalType, delivery: "download" as const },
+        createdAt: currentJobCreatedAt || Date.now(),
+        config: { source, archivalType },
       };
     }
+
+    // Otherwise, find it in past jobs
     const job = pastJobs.find((j) => j.id === displayedJobId);
     if (!job) return null;
     return {
@@ -81,7 +91,7 @@ export default function Page() {
       createdAt: job.createdAt,
       config: job.config,
     };
-  }, [displayedJobId, pastJobs, source, archivalType]);
+  }, [displayedJobId, currentJobId, currentJobCreatedAt, pastJobs, source, archivalType]);
 
   function openPastJob(job: PastJob) {
     setDisplayedJobId(job.id);
@@ -165,6 +175,11 @@ export default function Page() {
     [archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken]
   );
 
+  // Check if auth token is valid for downloads
+  const isAuthTokenValid = useMemo(() => {
+    return !!(authToken && authToken.trim());
+  }, [authToken]);
+
   async function generateArchive() {
     if (validationError) {
       setRunState("error");
@@ -174,7 +189,13 @@ export default function Page() {
       return;
     }
 
-    setDisplayedJobId(null); // Switch to current job
+    // Generate job ID at the start
+    const createdAt = Date.now();
+    const jobId = generateJobId(source, archivalType, createdAt);
+    setCurrentJobId(jobId);
+    setCurrentJobCreatedAt(createdAt);
+    setDisplayedJobId(jobId); // Switch to current job
+
     setRunState("running");
     setStatusText("Running...");
     setDetails("");
@@ -221,17 +242,17 @@ export default function Page() {
         start,
         end,
         todayStr,
+        authToken,
       });
       setCurrentJobDownloadUrl(downloadUrl);
 
-      // Add to past jobs - capture current state values
-      const jobId = `job-${Date.now()}`;
+      // Add to past jobs - use the existing jobId from when job started
       // Use functional update to capture current state
       setPastJobs((prev) => [
         {
-          id: jobId,
-          createdAt: Date.now(),
-          config: { source, archivalType, delivery: "download" },
+          id: currentJobId!,
+          createdAt: currentJobCreatedAt!,
+          config: { source, archivalType },
           downloadUrl,
           state: "success",
           statusText: "Done (simulated).",
@@ -241,6 +262,8 @@ export default function Page() {
         },
         ...prev,
       ]);
+      setCurrentJobId(null); // Job is now in past jobs
+      setCurrentJobCreatedAt(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setRunState("error");
@@ -248,22 +271,24 @@ export default function Page() {
       setDetails(msg);
       pushLog("error", msg);
 
-      // Add to past jobs even on error
-      const jobId = `job-${Date.now()}`;
+      // Add to past jobs even on error - use the existing jobId from when job started
+      const errorTimestamp = Date.now();
       setPastJobs((prev) => [
         {
-          id: jobId,
-          createdAt: Date.now(),
-          config: { source, archivalType, delivery: "download" },
+          id: currentJobId!,
+          createdAt: currentJobCreatedAt!,
+          config: { source, archivalType },
           downloadUrl: undefined,
           state: "error",
           statusText: "Failed.",
           progress: progress,
-          logs: [...logs, { ts: Date.now(), level: "error", msg }],
+          logs: [...logs, { ts: errorTimestamp, level: "error", msg }],
           details: msg,
         },
         ...prev,
       ]);
+      setCurrentJobId(null); // Job is now in past jobs
+      setCurrentJobCreatedAt(null);
     } finally {
       window.clearInterval(ticker);
       setProgress((p) => (p < 100 && runState !== "error" ? 100 : p));
@@ -279,7 +304,7 @@ export default function Page() {
             <p className="text-base text-gray-600 leading-relaxed">
               Configure and generate archives from various sources. All times are in EST (Eastern Standard Time). Data
               sources include Instagram, Twitter / X, TikTok, Newsletter, Daily Prince website, and Daily Prince website
-              + newsletter (issues).
+              + newsletter (issues). Archival methods include single day, date range, certain URLs, and most recent.
             </p>
           </div>
         </header>
@@ -616,12 +641,11 @@ export default function Page() {
                     </div>
                   )}
                 </div>
-                {displayedJobId !== null && (
+                {displayedJobId !== null && displayedJobId !== currentJobId && currentJobId && (
                   <button
                     type="button"
                     onClick={() => {
-                      setDisplayedJobId(null);
-                      // Don't reset runState, statusText, etc. - keep current job state
+                      setDisplayedJobId(currentJobId);
                     }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium">
                     View current
@@ -635,14 +659,23 @@ export default function Page() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <div className="text-sm font-medium text-gray-900">Status</div>
-                  {runState === "success" && currentJobDownloadUrl && displayedJobId === null && (
-                    <a
-                      href={currentJobDownloadUrl}
-                      download
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
-                      Download
-                    </a>
-                  )}
+                  {runState === "success" &&
+                    currentJobDownloadUrl &&
+                    displayedJobId === currentJobId &&
+                    isAuthTokenValid && (
+                      <a
+                        href={currentJobDownloadUrl}
+                        download
+                        onClick={(e) => {
+                          if (!isAuthTokenValid) {
+                            e.preventDefault();
+                            alert("Authentication token is required to download.");
+                          }
+                        }}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
+                        Download
+                      </a>
+                    )}
                 </div>
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
                   {statusText}
@@ -732,14 +765,29 @@ export default function Page() {
                                 className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
                                 Open
                               </button>
-                              {job.downloadUrl && (
-                                <a
-                                  href={job.downloadUrl}
-                                  download
-                                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
-                                  Download
-                                </a>
-                              )}
+                              {job.downloadUrl &&
+                                isAuthTokenValid &&
+                                (() => {
+                                  // Add auth token to download URL
+                                  const separator = job.downloadUrl.includes("?") ? "&" : "?";
+                                  const urlWithToken = `${job.downloadUrl}${separator}token=${encodeURIComponent(
+                                    authToken
+                                  )}`;
+                                  return (
+                                    <a
+                                      href={urlWithToken}
+                                      download
+                                      onClick={(e) => {
+                                        if (!isAuthTokenValid) {
+                                          e.preventDefault();
+                                          alert("Authentication token is required to download.");
+                                        }
+                                      }}
+                                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                      Download
+                                    </a>
+                                  );
+                                })()}
                             </div>
                           </div>
                         </div>

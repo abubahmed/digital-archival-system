@@ -2,8 +2,6 @@ import type { LogLevel } from "./utils/logHelpers";
 
 export type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyPrince" | "dailyPrinceIssues";
 export type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
-export type Delivery = "download" | "email";
-export type Schedule = "now" | "later";
 export type RunState = "idle" | "running" | "success" | "error";
 
 export interface LogLine {
@@ -26,7 +24,6 @@ export interface PastJob {
   config: {
     source: Source;
     archivalType: ArchivalType;
-    delivery: Delivery;
   };
   downloadUrl?: string;
   state: RunState;

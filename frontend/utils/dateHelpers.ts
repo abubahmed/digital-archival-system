@@ -192,19 +192,23 @@ export function getDownloadUrl(
     start?: string;
     end?: string;
     todayStr?: string;
+    authToken?: string;
   }
 ): string | undefined {
+  // Encode auth token for URL
+  const tokenParam = params.authToken ? `&token=${encodeURIComponent(params.authToken)}` : "";
+
   if (archivalType === "singleDay") {
     if (!params.date) return undefined;
-    return `/api/run-archive-zip?start=${params.date}&end=${params.date}`;
+    return `/api/run-archive-zip?start=${params.date}&end=${params.date}${tokenParam}`;
   }
 
   if (archivalType === "dateRange") {
     if (!params.start || !params.end) return undefined;
-    return `/api/run-archive-zip?start=${params.start}&end=${params.end}`;
+    return `/api/run-archive-zip?start=${params.start}&end=${params.end}${tokenParam}`;
   }
 
   // Dummy link for other types (urls, mostRecent)
   const today = params.todayStr || getTodayStr();
-  return `/api/run-archive-zip?start=${today}&end=${today}`;
+  return `/api/run-archive-zip?start=${today}&end=${today}${tokenParam}`;
 }

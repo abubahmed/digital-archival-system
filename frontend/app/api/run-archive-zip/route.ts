@@ -82,6 +82,16 @@ export async function GET(req: Request) {
   console.log("Starting ZIP download process...");
   try {
     const url = new URL(req.url);
+
+    // Validate auth token - check Authorization header or token query parameter
+    const authHeader = req.headers.get("Authorization");
+    const tokenParam = url.searchParams.get("token");
+    const authToken = authHeader?.replace("Bearer ", "") || tokenParam;
+
+    if (!authToken || !authToken.trim()) {
+      return new Response("Authentication token is required.", { status: 401 });
+    }
+
     // Support either single date (?date=YYYY-MM-DD) or range
     const date = url.searchParams.get("date");
     const startQuery = url.searchParams.get("start") || url.searchParams.get("startDate");
