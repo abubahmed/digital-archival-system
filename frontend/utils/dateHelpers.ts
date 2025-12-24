@@ -112,3 +112,99 @@ export function timeToInputValue(time: string): string {
   // Convert "HH:MM:SS" or "HH:MM" to "HH:MM" for time input
   return time.split(":").slice(0, 2).join(":");
 }
+
+// Get today's date string in YYYY-MM-DD format
+export function getTodayStr(): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Get initial value for mostRecentSince (current time in EST)
+export function getInitialMostRecentSince(): string {
+  const d = new Date(Date.now());
+  return dateToEstDatetimeInput(d);
+}
+
+// Window preview result type
+export interface WindowPreview {
+  headline: string;
+  body: string;
+}
+
+// Compute window preview based on archival type
+export function getWindowPreview(
+  archivalType: "singleDay" | "dateRange" | "urls" | "mostRecent",
+  params: {
+    // Single day params
+    date?: string;
+    dateStartTime?: string;
+    dateEndTime?: string;
+    // Date range params
+    start?: string;
+    end?: string;
+    startTime?: string;
+    endTime?: string;
+    // Most recent params
+    mostRecentSince?: string;
+    mostRecentCount?: number;
+    // URLs params
+    normalizedUrlsLength?: number;
+  }
+): WindowPreview | null {
+  if (archivalType === "singleDay") {
+    if (!params.date) return null;
+    const w = computeWindowSingleDay(params.date, params.dateStartTime || "00:00", params.dateEndTime || "00:00");
+    return w ? formatWindowPreview(w.start, w.end) : null;
+  }
+
+  if (archivalType === "dateRange") {
+    if (!params.start || !params.end) return null;
+    const w = computeWindowRange(params.start, params.end, params.startTime || "00:00", params.endTime || "00:00");
+    return w ? formatWindowPreview(w.start, w.end) : null;
+  }
+
+  if (archivalType === "mostRecent") {
+    if (!params.mostRecentSince) return null;
+    const since = parseEstDatetimeInput(params.mostRecentSince);
+    if (Number.isNaN(since.getTime())) return null;
+    return {
+      headline: "Selection window (EST)",
+      body: `Most recent ${params.mostRecentCount || 50} items since ${formatEst(since)} EST.`,
+    };
+  }
+
+  // URLs mode
+  const urlCount = params.normalizedUrlsLength || 0;
+  return {
+    headline: "Selection window",
+    body: `Using explicit URL list (${urlCount} URL${urlCount === 1 ? "" : "s"}).`,
+  };
+}
+
+// Get download URL based on archival type
+export function getDownloadUrl(
+  archivalType: "singleDay" | "dateRange" | "urls" | "mostRecent",
+  params: {
+    date?: string;
+    start?: string;
+    end?: string;
+    todayStr?: string;
+  }
+): string | undefined {
+  if (archivalType === "singleDay") {
+    if (!params.date) return undefined;
+    return `/api/run-archive-zip?start=${params.date}&end=${params.date}`;
+  }
+
+  if (archivalType === "dateRange") {
+    if (!params.start || !params.end) return undefined;
+    return `/api/run-archive-zip?start=${params.start}&end=${params.end}`;
+  }
+
+  // Dummy link for other types (urls, mostRecent)
+  const today = params.todayStr || getTodayStr();
+  return `/api/run-archive-zip?start=${today}&end=${today}`;
+}

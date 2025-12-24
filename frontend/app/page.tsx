@@ -1,56 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import ConfigurationPanel from "./components/ConfigurationPanel";
-import StatusPanel, { type LogLine } from "./components/StatusPanel";
-import {
-  computeWindowSingleDay,
-  computeWindowRange,
-  formatWindowPreview,
-  formatEst,
-  dateToEstDatetimeInput,
-  parseEstDatetimeInput,
-} from "./utils/dateHelpers";
-import { type LogLevel } from "./utils/logHelpers";
-import { validateBeforeRun } from "./utils/validation";
-
-type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyPrince" | "dailyPrinceIssues";
-type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
-type Delivery = "download" | "email";
-type Schedule = "now" | "later";
-type RunState = "idle" | "running" | "success" | "error";
-
-export interface PastJob {
-  id: string;
-  createdAt: number;
-  config: {
-    source: Source;
-    archivalType: ArchivalType;
-    delivery: Delivery;
-  };
-  downloadUrl?: string;
-  state: RunState;
-  statusText: string;
-  progress: number;
-  logs: LogLine[];
-  details: string;
-}
+import { useEffect, useMemo, useRef, useState } from "react";
+import RadioCard from "../components/RadioCard";
+import type { LogLine } from "../types";
+import { getTodayStr, getInitialMostRecentSince, getWindowPreview, getDownloadUrl } from "../utils/dateHelpers";
+import { type LogLevel, formatLogTs, levelClass } from "../utils/logHelpers";
+import { validateBeforeRun } from "../utils/validation";
+import type { Source, ArchivalType, RunState, PastJob } from "../types";
+import { getInitialPastJobs } from "../data";
 
 export default function Page() {
   // Core configuration
   const [source, setSource] = useState<Source>("dailyPrince");
   const [archivalType, setArchivalType] = useState<ArchivalType>("singleDay");
-  const [delivery, setDelivery] = useState<Delivery>("download");
-  const [schedule, setSchedule] = useState<Schedule>("now");
 
   // Dates
-  const todayStr = useMemo(() => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
+  const todayStr = useMemo(() => getTodayStr(), []);
 
   const [date, setDate] = useState<string>(todayStr);
   const [dateStartTime, setDateStartTime] = useState<string>("00:00");
@@ -65,24 +30,14 @@ export default function Page() {
 
   // Most recent mode
   const [mostRecentCount, setMostRecentCount] = useState<number>(50);
-  const [mostRecentSince, setMostRecentSince] = useState<string>(() => {
-    const d = new Date(Date.now());
-    // Set to current time in EST
-    return dateToEstDatetimeInput(d);
-  });
-
-  // Schedule
-  const [scheduledFor, setScheduledFor] = useState<string>(() => {
-    const d = new Date(Date.now() + 30 * 60 * 1000);
-    return dateToEstDatetimeInput(d);
-  });
+  const [mostRecentSince, setMostRecentSince] = useState<string>(getInitialMostRecentSince());
 
   // Auth
   const [authToken, setAuthToken] = useState<string>("");
   const [rememberAuth, setRememberAuth] = useState<boolean>(true);
 
-  // Email
-  const [email, setEmail] = useState<string>("");
+  // Metadata/METS/ALTO encoding
+  const [includeMetadataAndMetsAlto, setIncludeMetadataAndMetsAlto] = useState<boolean>(false);
 
   // Run state
   const [runState, setRunState] = useState<RunState>("idle");
@@ -90,137 +45,46 @@ export default function Page() {
   const [details, setDetails] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
   const [logs, setLogs] = useState<LogLine[]>([]);
+  const [currentJobDownloadUrl, setCurrentJobDownloadUrl] = useState<string | undefined>(undefined);
 
   // Past jobs
-  const [pastJobs, setPastJobs] = useState<PastJob[]>([
-    {
-      id: "job-1",
-      createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-      config: {
-        source: "dailyPrince",
-        archivalType: "singleDay",
-        delivery: "download",
-      },
-      downloadUrl: "/api/run-archive-zip?start=2025-01-20&end=2025-01-20",
-      state: "success",
-      statusText: "Done (simulated).",
-      progress: 100,
-      logs: [
-        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
-        {
-          ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 100,
-          level: "info",
-          msg: "Source: dailyPrince, Type: singleDay, Delivery: download",
-        },
-        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
-        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Fetching items..." },
-        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 800, level: "info", msg: "Processing items..." },
-        { ts: Date.now() - 2 * 24 * 60 * 60 * 1000 + 1100, level: "info", msg: "Archive process complete." },
-      ],
-      details: "Archive generated successfully for 2025-01-20",
-    },
-    {
-      id: "job-2",
-      createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
-      config: {
-        source: "newsletter",
-        archivalType: "dateRange",
-        delivery: "download",
-      },
-      downloadUrl: "/api/run-archive-zip?start=2025-01-15&end=2025-01-17",
-      state: "success",
-      statusText: "Done (simulated).",
-      progress: 100,
-      logs: [
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
-        {
-          ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 100,
-          level: "info",
-          msg: "Source: newsletter, Type: dateRange, Delivery: download",
-        },
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 500, level: "debug", msg: "Validating inputs..." },
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 750, level: "info", msg: "Fetching newsletters..." },
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 1050, level: "info", msg: "Processing items..." },
-        { ts: Date.now() - 5 * 24 * 60 * 60 * 1000 + 1350, level: "info", msg: "Archive process complete." },
-      ],
-      details: "Archive generated successfully for date range 2025-01-15 to 2025-01-17",
-    },
-    {
-      id: "job-3",
-      createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
-      config: {
-        source: "dailyPrinceIssues",
-        archivalType: "singleDay",
-        delivery: "download",
-      },
-      downloadUrl: "/api/run-archive-zip?start=2025-01-13&end=2025-01-13",
-      state: "success",
-      statusText: "Done (simulated).",
-      progress: 100,
-      logs: [
-        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
-        {
-          ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 100,
-          level: "info",
-          msg: "Source: dailyPrinceIssues, Type: singleDay, Delivery: download",
-        },
-        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
-        { ts: Date.now() - 7 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
-      ],
-      details: "Archive generated successfully for 2025-01-13",
-    },
-    {
-      id: "job-4",
-      createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10 days ago
-      config: {
-        source: "instagram",
-        archivalType: "mostRecent",
-        delivery: "download",
-      },
-      downloadUrl: "/api/run-archive-zip?start=2025-01-10&end=2025-01-10",
-      state: "success",
-      statusText: "Done (simulated).",
-      progress: 100,
-      logs: [
-        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
-        {
-          ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 100,
-          level: "info",
-          msg: "Source: instagram, Type: mostRecent, Delivery: download",
-        },
-        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
-        { ts: Date.now() - 10 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
-      ],
-      details: "Archive generated successfully",
-    },
-    {
-      id: "job-5",
-      createdAt: Date.now() - 14 * 24 * 60 * 60 * 1000, // 14 days ago
-      config: {
-        source: "twitter",
-        archivalType: "urls",
-        delivery: "email",
-      },
-      state: "success",
-      statusText: "Email sent.",
-      progress: 100,
-      logs: [
-        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
-        {
-          ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 100,
-          level: "info",
-          msg: "Source: twitter, Type: urls, Delivery: email",
-        },
-        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
-        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
-        { ts: Date.now() - 14 * 24 * 60 * 60 * 1000 + 600, level: "info", msg: "Email sent to user@example.com" },
-      ],
-      details: "Archive sent via email to user@example.com",
-    },
-  ]);
+  const [pastJobs, setPastJobs] = useState<PastJob[]>(getInitialPastJobs());
+
+  // Currently displayed job (null = current job, string = past job ID)
+  const [displayedJobId, setDisplayedJobId] = useState<string | null>(null);
+
+  // Log viewport ref for auto-scrolling
+  const logViewportRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    const el = logViewportRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [logs.length]);
+
+  // Get currently displayed job info
+  const displayedJob = useMemo(() => {
+    if (displayedJobId === null) {
+      return {
+        isCurrent: true,
+        label: "Current job",
+        createdAt: Date.now(),
+        config: { source, archivalType, delivery: "download" as const },
+      };
+    }
+    const job = pastJobs.find((j) => j.id === displayedJobId);
+    if (!job) return null;
+    return {
+      isCurrent: false,
+      label: "Past job",
+      createdAt: job.createdAt,
+      config: job.config,
+    };
+  }, [displayedJobId, pastJobs, source, archivalType]);
 
   function openPastJob(job: PastJob) {
+    setDisplayedJobId(job.id);
     setRunState(job.state);
     setStatusText(job.statusText);
     setDetails(job.details);
@@ -239,40 +103,34 @@ export default function Page() {
   }, [urlsText]);
 
   // Window preview
-  const windowPreview = useMemo(() => {
-    if (archivalType === "singleDay") {
-      const w = computeWindowSingleDay(date, dateStartTime, dateEndTime);
-      return w ? formatWindowPreview(w.start, w.end) : null;
-    }
-    if (archivalType === "dateRange") {
-      const w = computeWindowRange(start, end, startTime, endTime);
-      return w ? formatWindowPreview(w.start, w.end) : null;
-    }
-    if (archivalType === "mostRecent") {
-      const since = mostRecentSince ? parseEstDatetimeInput(mostRecentSince) : null;
-      if (!since || Number.isNaN(since.getTime())) return null;
-      return {
-        headline: "Selection window (EST)",
-        body: `Most recent ${mostRecentCount} items since ${formatEst(since)} EST.`,
-      };
-    }
-    return {
-      headline: "Selection window",
-      body: `Using explicit URL list (${normalizedUrls.length} URL${normalizedUrls.length === 1 ? "" : "s"}).`,
-    };
-  }, [
-    archivalType,
-    date,
-    dateStartTime,
-    dateEndTime,
-    start,
-    end,
-    startTime,
-    endTime,
-    mostRecentSince,
-    mostRecentCount,
-    normalizedUrls.length,
-  ]);
+  const windowPreview = useMemo(
+    () =>
+      getWindowPreview(archivalType, {
+        date,
+        dateStartTime,
+        dateEndTime,
+        start,
+        end,
+        startTime,
+        endTime,
+        mostRecentSince,
+        mostRecentCount,
+        normalizedUrlsLength: normalizedUrls.length,
+      }),
+    [
+      archivalType,
+      date,
+      dateStartTime,
+      dateEndTime,
+      start,
+      end,
+      startTime,
+      endTime,
+      mostRecentSince,
+      mostRecentCount,
+      normalizedUrls.length,
+    ]
+  );
 
   // Persist auth token
   useEffect(() => {
@@ -303,32 +161,8 @@ export default function Page() {
 
   const validationError = useMemo(
     () =>
-      validateBeforeRun(
-        delivery,
-        archivalType,
-        date,
-        start,
-        end,
-        normalizedUrls,
-        mostRecentSince,
-        mostRecentCount,
-        schedule,
-        scheduledFor,
-        email
-      ),
-    [
-      delivery,
-      archivalType,
-      date,
-      start,
-      end,
-      normalizedUrls,
-      mostRecentSince,
-      mostRecentCount,
-      schedule,
-      scheduledFor,
-      email,
-    ]
+      validateBeforeRun(archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken),
+    [archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken]
   );
 
   async function generateArchive() {
@@ -340,14 +174,19 @@ export default function Page() {
       return;
     }
 
+    setDisplayedJobId(null); // Switch to current job
     setRunState("running");
-    setStatusText(schedule === "later" ? "Scheduled (simulation)..." : "Running...");
+    setStatusText("Running...");
     setDetails("");
     setProgress(2);
     setLogs([]);
+    setCurrentJobDownloadUrl(undefined);
 
     pushLog("info", "Archive job configured.");
-    pushLog("info", `Source: ${source}, Type: ${archivalType}, Delivery: ${delivery}`);
+    pushLog("info", `Source: ${source}, Type: ${archivalType}`);
+    if (includeMetadataAndMetsAlto) {
+      pushLog("info", "Metadata and METS/ALTO encoding enabled");
+    }
 
     // Progress ticker (simulated)
     const ticker = window.setInterval(() => {
@@ -359,33 +198,6 @@ export default function Page() {
     }, 350);
 
     try {
-      if (schedule === "later") {
-        const scheduledDate = parseEstDatetimeInput(scheduledFor);
-        pushLog("info", `Scheduled for ${formatEst(scheduledDate)} EST (simulation).`);
-        await sleep(800);
-        setProgress(100);
-        setRunState("success");
-        setStatusText("Scheduled.");
-
-        // Add to past jobs
-        const jobId = `job-${Date.now()}`;
-        setPastJobs((prev) => [
-          {
-            id: jobId,
-            createdAt: Date.now(),
-            config: { source, archivalType, delivery },
-            downloadUrl: undefined,
-            state: "success",
-            statusText: "Scheduled.",
-            progress: 100,
-            logs: [...logs],
-            details: "",
-          },
-          ...prev,
-        ]);
-        return;
-      }
-
       // Simulate archive process
       pushLog("info", "Starting archive process...");
       await sleep(300);
@@ -395,12 +207,7 @@ export default function Page() {
       await sleep(300);
       pushLog("info", "Processing items...");
       await sleep(300);
-      pushLog(
-        "info",
-        delivery === "email"
-          ? `Would email results to ${email || "(missing email)"}`
-          : "Would prepare a browser download"
-      );
+      pushLog("info", "Would prepare a browser download");
       await sleep(250);
       pushLog("info", "Archive process complete.");
 
@@ -408,25 +215,23 @@ export default function Page() {
       setRunState("success");
       setStatusText("Done (simulated).");
 
+      // Calculate download URL for current job
+      const downloadUrl = getDownloadUrl(archivalType, {
+        date,
+        start,
+        end,
+        todayStr,
+      });
+      setCurrentJobDownloadUrl(downloadUrl);
+
       // Add to past jobs - capture current state values
       const jobId = `job-${Date.now()}`;
-      let downloadUrl: string | undefined;
-      if (delivery === "download") {
-        if (archivalType === "singleDay") {
-          downloadUrl = `/api/run-archive-zip?start=${date}&end=${date}`;
-        } else if (archivalType === "dateRange") {
-          downloadUrl = `/api/run-archive-zip?start=${start}&end=${end}`;
-        } else {
-          // Dummy link for other types
-          downloadUrl = `/api/run-archive-zip?start=${todayStr}&end=${todayStr}`;
-        }
-      }
       // Use functional update to capture current state
       setPastJobs((prev) => [
         {
           id: jobId,
           createdAt: Date.now(),
-          config: { source, archivalType, delivery },
+          config: { source, archivalType, delivery: "download" },
           downloadUrl,
           state: "success",
           statusText: "Done (simulated).",
@@ -449,7 +254,7 @@ export default function Page() {
         {
           id: jobId,
           createdAt: Date.now(),
-          config: { source, archivalType, delivery },
+          config: { source, archivalType, delivery: "download" },
           downloadUrl: undefined,
           state: "error",
           statusText: "Failed.",
@@ -467,74 +272,494 @@ export default function Page() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-white via-gray-50 to-gray-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Archive Builder</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Configure and generate archives from various sources. All times are in EST (Eastern Standard Time).
-              </p>
-            </div>
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 pb-6 sm:px-6 lg:px-8">
+        <header className="border-gray-200 pb-8">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Prince Archival</h1>
+            <p className="text-base text-gray-600 leading-relaxed">
+              Configure and generate archives from various sources. All times are in EST (Eastern Standard Time). Data
+              sources include Instagram, Twitter / X, TikTok, Newsletter, Daily Prince website, and Daily Prince website
+              + newsletter (issues).
+            </p>
           </div>
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ConfigurationPanel
-            source={source}
-            setSource={setSource}
-            archivalType={archivalType}
-            setArchivalType={setArchivalType}
-            delivery={delivery}
-            setDelivery={setDelivery}
-            schedule={schedule}
-            setSchedule={setSchedule}
-            date={date}
-            setDate={setDate}
-            dateStartTime={dateStartTime}
-            setDateStartTime={setDateStartTime}
-            dateEndTime={dateEndTime}
-            setDateEndTime={setDateEndTime}
-            start={start}
-            setStart={setStart}
-            startTime={startTime}
-            setStartTime={setStartTime}
-            end={end}
-            setEnd={setEnd}
-            endTime={endTime}
-            setEndTime={setEndTime}
-            urlsText={urlsText}
-            setUrlsText={setUrlsText}
-            normalizedUrls={normalizedUrls}
-            mostRecentCount={mostRecentCount}
-            setMostRecentCount={setMostRecentCount}
-            mostRecentSince={mostRecentSince}
-            setMostRecentSince={setMostRecentSince}
-            scheduledFor={scheduledFor}
-            setScheduledFor={setScheduledFor}
-            email={email}
-            setEmail={setEmail}
-            authToken={authToken}
-            setAuthToken={setAuthToken}
-            rememberAuth={rememberAuth}
-            setRememberAuth={setRememberAuth}
-            todayStr={todayStr}
-            windowPreview={windowPreview}
-            onGenerate={generateArchive}
-            isRunning={isRunning}
-            validationError={validationError}
-          />
+          {/* Configuration Panel */}
+          <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Configuration</h2>
+              <p className="mt-1 text-sm text-gray-600">Select source and archival type, then configure details.</p>
+            </div>
 
-          <StatusPanel
-            runState={runState}
-            statusText={statusText}
-            progress={progress}
-            logs={logs}
-            details={details}
-            pastJobs={pastJobs}
-            onOpenJob={openPastJob}
-          />
+            <div className="space-y-6 px-6 py-6">
+              {/* Auth */}
+              <div>
+                <div className="mb-2">
+                  <div className="text-sm font-medium text-gray-900">Authentication</div>
+                  <div className="text-xs text-gray-600">API key or token (required)</div>
+                </div>
+                <input
+                  id="token"
+                  type="password"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Paste token here"
+                  value={authToken}
+                  onChange={(e) => setAuthToken(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+                <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={rememberAuth}
+                    onChange={(e) => setRememberAuth(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  Remember token in this browser (localStorage)
+                </label>
+              </div>
+
+              {/* Source Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900" htmlFor="source">
+                  Source of archival data
+                </label>
+                <select
+                  id="source"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value as Source)}>
+                  <option value="instagram">Instagram</option>
+                  <option value="twitter">Twitter / X</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="newsletter">Newsletter</option>
+                  <option value="dailyPrince">Daily Prince website</option>
+                  <option value="dailyPrinceIssues">Daily Prince website + newsletter (issues)</option>
+                </select>
+              </div>
+
+              {/* Archival Type */}
+              <div>
+                <div className="mb-3">
+                  <div className="text-sm font-medium text-gray-900">Type of archival</div>
+                  <div className="text-xs text-gray-600">Choose the selection mode for what to archive.</div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <RadioCard
+                    name="archivalType"
+                    value="singleDay"
+                    checked={archivalType === "singleDay"}
+                    onChange={() => setArchivalType("singleDay")}
+                    title="Single day"
+                    subtitle="Start time → end time of selected day (EST)"
+                  />
+                  <RadioCard
+                    name="archivalType"
+                    value="dateRange"
+                    checked={archivalType === "dateRange"}
+                    onChange={() => setArchivalType("dateRange")}
+                    title="Date range"
+                    subtitle="Start time of start day → end time of end day (EST)"
+                  />
+                  <RadioCard
+                    name="archivalType"
+                    value="urls"
+                    checked={archivalType === "urls"}
+                    onChange={() => setArchivalType("urls")}
+                    title="Certain URLs"
+                    subtitle="Explicit list (one per line)"
+                  />
+                  <RadioCard
+                    name="archivalType"
+                    value="mostRecent"
+                    checked={archivalType === "mostRecent"}
+                    onChange={() => setArchivalType("mostRecent")}
+                    title="Most recent items"
+                    subtitle="Latest X items since a date/time"
+                  />
+                </div>
+              </div>
+
+              {/* Selection Details */}
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Selection details</div>
+                  <p className="text-xs text-gray-600">Select the details of the selection mode.</p>
+                </div>
+
+                {archivalType === "singleDay" && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700" htmlFor="date">
+                        Date
+                      </label>
+                      <input
+                        id="date"
+                        type="date"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        max={todayStr}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="dateStartTime">
+                          Start time (EST)
+                        </label>
+                        <input
+                          id="dateStartTime"
+                          type="time"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={dateStartTime}
+                          onChange={(e) => setDateStartTime(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="dateEndTime">
+                          End time (EST)
+                        </label>
+                        <input
+                          id="dateEndTime"
+                          type="time"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={dateEndTime}
+                          onChange={(e) => setDateEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {archivalType === "dateRange" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="start">
+                          Start date
+                        </label>
+                        <input
+                          id="start"
+                          type="date"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={start}
+                          onChange={(e) => setStart(e.target.value)}
+                          max={end || todayStr}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="end">
+                          End date
+                        </label>
+                        <input
+                          id="end"
+                          type="date"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={end}
+                          onChange={(e) => setEnd(e.target.value)}
+                          min={start}
+                          max={todayStr}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="startTime">
+                          Start time (EST)
+                        </label>
+                        <input
+                          id="startTime"
+                          type="time"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="endTime">
+                          End time (EST)
+                        </label>
+                        <input
+                          id="endTime"
+                          type="time"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {archivalType === "urls" && (
+                  <div>
+                    <div className="mb-2 flex items-end justify-between">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700" htmlFor="urls">
+                          URLs (one per line)
+                        </label>
+                      </div>
+                      <div className="text-xs text-gray-600">{normalizedUrls.length} parsed</div>
+                    </div>
+                    <textarea
+                      id="urls"
+                      className="block min-h-32 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-mono text-xs text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      placeholder="https://example.com/post/123&#10;https://example.com/post/456"
+                      value={urlsText}
+                      onChange={(e) => setUrlsText(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {archivalType === "mostRecent" && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700" htmlFor="count">
+                        Most recent X items
+                      </label>
+                      <input
+                        id="count"
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        value={mostRecentCount}
+                        onChange={(e) => setMostRecentCount(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700" htmlFor="since">
+                        Since (EST datetime)
+                      </label>
+                      <input
+                        id="since"
+                        type="datetime-local"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        value={mostRecentSince}
+                        onChange={(e) => setMostRecentSince(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {windowPreview && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 transition-colors">
+                    <div className="text-sm font-medium text-gray-700">{windowPreview.headline}</div>
+                    <div className="mt-1 text-sm text-gray-900">{windowPreview.body}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Metadata/METS/ALTO Encoding */}
+              <div>
+                <div className="mb-2">
+                  <div className="text-sm font-medium text-gray-900">Encoding Options</div>
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={includeMetadataAndMetsAlto}
+                    onChange={(e) => setIncludeMetadataAndMetsAlto(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  Include metadata and METS/ALTO encoding
+                </label>
+              </div>
+
+              {/* Generate Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={generateArchive}
+                  disabled={isRunning || !!validationError}
+                  className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50">
+                  {isRunning ? "Generating..." : "Generate Archive"}
+                </button>
+                {validationError && !isRunning && <p className="mt-2 text-xs text-red-600">{validationError}</p>}
+              </div>
+            </div>
+          </section>
+
+          {/* Status Panel */}
+          <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Run Status</h2>
+                  {displayedJob && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-xs text-gray-600">
+                        {displayedJob.isCurrent ? "Current job" : "Past job"}
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-600">
+                        {displayedJob.config.source} - {displayedJob.config.archivalType}
+                      </span>
+                      {!displayedJob.isCurrent && (
+                        <>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-600">
+                            {new Date(displayedJob.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {displayedJobId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDisplayedJobId(null);
+                      // Don't reset runState, statusText, etc. - keep current job state
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                    View current
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              {/* Status */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-medium text-gray-900">Status</div>
+                  {runState === "success" && currentJobDownloadUrl && displayedJobId === null && (
+                    <a
+                      href={currentJobDownloadUrl}
+                      download
+                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
+                      Download
+                    </a>
+                  )}
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
+                  {statusText}
+                </div>
+
+                {/* Progress Bar */}
+                {(isRunning || runState === "success" || runState === "error") && (
+                  <div className="mt-3">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          runState === "error" ? "bg-red-600" : runState === "success" ? "bg-green-600" : "bg-black"
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Debug Logs */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-medium text-gray-900">Live debug logs</div>
+                </div>
+                <div
+                  ref={logViewportRef}
+                  className="h-72 overflow-auto rounded-lg border border-gray-200 bg-black px-4 py-3 font-mono text-xs text-gray-100">
+                  {logs.length === 0 ? (
+                    <div className="text-gray-400">No logs yet. Click "Generate Archive" to start.</div>
+                  ) : (
+                    logs.map((l, idx) => (
+                      <div key={`${l.ts}-${idx}`} className="whitespace-pre-wrap break-words">
+                        <span className="text-gray-400">{formatLogTs(l.ts)}</span>{" "}
+                        <span className={levelClass(l.level)}>[{l.level}]</span> {l.msg}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Details */}
+              <div>
+                <div className="mb-2 text-sm font-medium text-gray-900">Details</div>
+                <div className="max-h-48 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900">
+                  {details || "(none)"}
+                </div>
+              </div>
+
+              {/* Past Jobs */}
+              <div>
+                <div className="mb-2 text-sm font-medium text-gray-900">Past Jobs</div>
+                {pastJobs.length === 0 ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                    No past jobs yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-auto">
+                    {pastJobs.map((job) => {
+                      const date = new Date(job.createdAt);
+                      const dateStr = date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      });
+                      const timeStr = date.toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <div
+                          key={job.id}
+                          className="rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                {job.config.source} - {job.config.archivalType}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {dateStr} at {timeStr}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openPastJob(job)}
+                                className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
+                                Open
+                              </button>
+                              {job.downloadUrl && (
+                                <a
+                                  href={job.downloadUrl}
+                                  download
+                                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                  Download
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
+
+        {/* Footer */}
+        <footer className="mt-12 border-t border-gray-200 pt-6">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-xs text-gray-600">
+              © {new Date().getFullYear()} The Daily Princetonian. All rights reserved.
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );
