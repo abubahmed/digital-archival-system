@@ -8,9 +8,9 @@ export function addLog(jobId, log) {
 
     db.prepare(
         `
-    INSERT INTO logs (jobId, timestamp, level, message)
-    VALUES (?, ?, ?, ?)
-  `
+            INSERT INTO logs (jobId, timestamp, level, message)
+            VALUES (?, ?, ?, ?)
+        `
     ).run(jobId, ts, level, msg);
 }
 
@@ -21,11 +21,11 @@ export function getLogs(jobId, options = {}) {
     const { limit, offset = 0 } = options;
 
     let query = `
-    SELECT timestamp, level, message
-    FROM logs
-    WHERE jobId = ?
-    ORDER BY timestamp ASC
-  `;
+            SELECT timestamp, level, message
+            FROM logs
+            WHERE jobId = ?
+            ORDER BY timestamp ASC
+        `;
 
     const params = [jobId];
 
@@ -50,12 +50,12 @@ export function getRecentLogs(jobId, limit = 100) {
     const logs = db
         .prepare(
             `
-    SELECT timestamp, level, message
-    FROM logs
-    WHERE jobId = ?
-    ORDER BY timestamp DESC
-    LIMIT ?
-  `
+                SELECT timestamp, level, message
+                FROM logs
+                WHERE jobId = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            `
         )
         .all(jobId, limit);
 
@@ -72,7 +72,15 @@ export function getRecentLogs(jobId, limit = 100) {
  * Get log count for a job
  */
 export function getLogCount(jobId) {
-    const result = db.prepare(`SELECT COUNT(*) as count FROM logs WHERE jobId = ?`).get(jobId);
+    const result = db
+        .prepare(
+            `
+                SELECT COUNT(*) as count
+                FROM logs
+                WHERE jobId = ?
+            `
+        )
+        .get(jobId);
     return result.count;
 }
 

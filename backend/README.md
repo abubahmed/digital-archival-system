@@ -1,6 +1,6 @@
 # Backend API
 
-Express server for the digital archival system.
+Express server for the digital archival system with SQLite database.
 
 ## Setup
 
@@ -10,16 +10,16 @@ npm install
 
 ## Configuration
 
-Copy `.env.example` to `.env` and configure:
+Environment variables (optional):
 
 - `PORT` - Server port (default: 3001)
 - `NODE_ENV` - Environment (development/production)
-- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins
+- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: http://localhost:3000)
 
 ## Run
 
 ```bash
-# Development
+# Development (with auto-reload)
 npm run dev
 
 # Production
@@ -30,18 +30,21 @@ npm start
 
 ### Jobs
 
-- `GET /jobs` - List all jobs
+- `GET /jobs` - List all jobs (returns basic info, no logs)
 - `POST /jobs` - Create/start a new archival job
-- `GET /jobs/:jobId` - Get specific job details
+- `GET /jobs/:jobId` - Get specific job details (includes logs)
 
-### Health
+## Database
 
-- `GET /health` - Health check
+SQLite database (`database.db`) is automatically created on first run.
+
+- **jobs** table: Stores job metadata and configuration
+- **logs** table: Stores log entries for each job (with foreign key relationship)
 
 ## Security Features
 
 - Rate limiting (100 requests per 15 minutes per IP)
-- Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+- Security headers (X-Content-Type-Options, X-Frame-Options)
 - CORS configuration
 - Request body size limits (10MB)
 - Error handling with safe error messages
@@ -50,13 +53,12 @@ npm start
 
 ```
 backend/
-├── index.js              # Main server entry point
-├── config.js             # Configuration
-├── middleware/
-│   ├── auth.js          # Authentication middleware
-│   ├── errorHandler.js  # Error handling
-│   ├── security.js      # Security headers & rate limiting
-│   └── validation.js # Request validation
+├── index.js          # Main server entry point
+├── config.js         # Configuration
+├── db.js             # Database initialization
+├── db/
+│   ├── jobs.js       # Job database operations
+│   └── logs.js       # Log database operations
 └── routes/
-    └── jobs.js          # Job routes
+    └── jobs.js       # Job API routes
 ```

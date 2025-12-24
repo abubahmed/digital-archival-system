@@ -8,9 +8,9 @@ export function createJob(job) {
 
     db.prepare(
         `
-    INSERT INTO jobs (id, createdAt, source, archivalType, state, statusText, downloadUrl, config)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `
+            INSERT INTO jobs (id, createdAt, source, archivalType, state, statusText, downloadUrl, config)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `
     ).run(id, createdAt, config.source, config.archivalType, state, statusText, downloadUrl || null, JSON.stringify(config));
 
     return { id, createdAt, config, state, statusText, downloadUrl };
@@ -23,10 +23,10 @@ export function getAllJobs() {
     const jobs = db
         .prepare(
             `
-    SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
-    FROM jobs
-    ORDER BY createdAt DESC
-  `
+                SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
+                FROM jobs
+                ORDER BY createdAt DESC
+            `
         )
         .all();
 
@@ -50,10 +50,10 @@ export function getJobById(jobId) {
     const job = db
         .prepare(
             `
-    SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
-    FROM jobs
-    WHERE id = ?
-  `
+                SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
+                FROM jobs
+                WHERE id = ?
+            `
         )
         .get(jobId);
 
@@ -62,11 +62,11 @@ export function getJobById(jobId) {
     const logs = db
         .prepare(
             `
-    SELECT timestamp, level, message
-    FROM logs
-    WHERE jobId = ?
-    ORDER BY timestamp ASC
-  `
+                SELECT timestamp, level, message
+                FROM logs
+                WHERE jobId = ?
+                ORDER BY timestamp ASC
+            `
         )
         .all(jobId);
 
