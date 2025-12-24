@@ -7,6 +7,7 @@ import { getTodayStr, getInitialMostRecentSince, getWindowPreview, getDownloadUr
 import { type LogLevel, formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
 import { generateJobId } from "../utils/jobHelpers";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 import type { Source, ArchivalType, RunState, PastJob } from "../types";
 import { getInitialPastJobs } from "../data";
 
@@ -35,7 +36,7 @@ export default function Page() {
 
   // Auth
   const [authToken, setAuthToken] = useState<string>("");
-  const [rememberAuth, setRememberAuth] = useState<boolean>(true);
+  const [rememberAuth, setRememberAuth] = useLocalStorage<boolean>("archive_ui_remember_auth", true);
 
   // Metadata/METS/ALTO encoding
   const [includeMetadataAndMetsAlto, setIncludeMetadataAndMetsAlto] = useState<boolean>(false);
@@ -142,24 +143,26 @@ export default function Page() {
     ]
   );
 
-  // Persist auth token
+  // Load auth token from localStorage on mount if rememberAuth is true
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem("archive_ui_auth_token");
-      if (saved) setAuthToken(saved);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (!rememberAuth) return;
-      if (!authToken) {
-        window.localStorage.removeItem("archive_ui_auth_token");
-        return;
+    if (rememberAuth) {
+      try {
+        const saved = window.localStorage.getItem("archive_ui_auth_token");
+        if (saved) setAuthToken(saved);
+      } catch {
+        // ignore
       }
-      window.localStorage.setItem("archive_ui_auth_token", authToken);
+    }
+  }, [rememberAuth]);
+
+  // Save/remove auth token based on rememberAuth checkbox
+  useEffect(() => {
+    try {
+      if (rememberAuth && authToken) {
+        window.localStorage.setItem("archive_ui_auth_token", authToken);
+      } else if (!rememberAuth) {
+        window.localStorage.removeItem("archive_ui_auth_token");
+      }
     } catch {
       // ignore
     }
@@ -522,13 +525,10 @@ export default function Page() {
 
                 {archivalType === "urls" && (
                   <div>
-                    <div className="mb-2 flex items-end justify-between">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700" htmlFor="urls">
-                          URLs (one per line)
-                        </label>
-                      </div>
-                      <div className="text-xs text-gray-600">{normalizedUrls.length} parsed</div>
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-gray-700" htmlFor="urls">
+                        URLs (one per line)
+                      </label>
                     </div>
                     <textarea
                       id="urls"
