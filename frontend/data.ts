@@ -14,7 +14,6 @@ export function getInitialPastJobs(): PastJob[] {
       downloadUrl: "/api/run-archive-zip?start=2025-01-20&end=2025-01-20",
       state: "success",
       statusText: "Done (simulated).",
-      progress: 100,
       logs: [
         { ts: now - 2 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
         {
@@ -27,7 +26,6 @@ export function getInitialPastJobs(): PastJob[] {
         { ts: now - 2 * 24 * 60 * 60 * 1000 + 800, level: "info", msg: "Processing items..." },
         { ts: now - 2 * 24 * 60 * 60 * 1000 + 1100, level: "info", msg: "Archive process complete." },
       ],
-      details: "Archive generated successfully for 2025-01-20",
     },
     {
       id: generateJobId("newsletter", "dateRange", now - 5 * 24 * 60 * 60 * 1000),
@@ -39,7 +37,6 @@ export function getInitialPastJobs(): PastJob[] {
       downloadUrl: "/api/run-archive-zip?start=2025-01-15&end=2025-01-17",
       state: "success",
       statusText: "Done (simulated).",
-      progress: 100,
       logs: [
         { ts: now - 5 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
         {
@@ -53,7 +50,6 @@ export function getInitialPastJobs(): PastJob[] {
         { ts: now - 5 * 24 * 60 * 60 * 1000 + 1050, level: "info", msg: "Processing items..." },
         { ts: now - 5 * 24 * 60 * 60 * 1000 + 1350, level: "info", msg: "Archive process complete." },
       ],
-      details: "Archive generated successfully for date range 2025-01-15 to 2025-01-17",
     },
     {
       id: generateJobId("dailyPrinceIssues", "singleDay", now - 7 * 24 * 60 * 60 * 1000),
@@ -65,7 +61,6 @@ export function getInitialPastJobs(): PastJob[] {
       downloadUrl: "/api/run-archive-zip?start=2025-01-13&end=2025-01-13",
       state: "success",
       statusText: "Done (simulated).",
-      progress: 100,
       logs: [
         { ts: now - 7 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
         {
@@ -76,7 +71,6 @@ export function getInitialPastJobs(): PastJob[] {
         { ts: now - 7 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
         { ts: now - 7 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
       ],
-      details: "Archive generated successfully for 2025-01-13",
     },
     {
       id: generateJobId("instagram", "mostRecent", now - 10 * 24 * 60 * 60 * 1000),
@@ -88,7 +82,6 @@ export function getInitialPastJobs(): PastJob[] {
       downloadUrl: "/api/run-archive-zip?start=2025-01-10&end=2025-01-10",
       state: "success",
       statusText: "Done (simulated).",
-      progress: 100,
       logs: [
         { ts: now - 10 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
         {
@@ -99,7 +92,6 @@ export function getInitialPastJobs(): PastJob[] {
         { ts: now - 10 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
         { ts: now - 10 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
       ],
-      details: "Archive generated successfully",
     },
     {
       id: generateJobId("twitter", "urls", now - 14 * 24 * 60 * 60 * 1000),
@@ -111,7 +103,6 @@ export function getInitialPastJobs(): PastJob[] {
       downloadUrl: "/api/run-archive-zip?start=2025-01-06&end=2025-01-06",
       state: "success",
       statusText: "Done (simulated).",
-      progress: 100,
       logs: [
         { ts: now - 14 * 24 * 60 * 60 * 1000, level: "info", msg: "Archive job configured." },
         {
@@ -122,7 +113,6 @@ export function getInitialPastJobs(): PastJob[] {
         { ts: now - 14 * 24 * 60 * 60 * 1000 + 200, level: "info", msg: "Starting archive process..." },
         { ts: now - 14 * 24 * 60 * 60 * 1000 + 500, level: "info", msg: "Archive process complete." },
       ],
-      details: "Archive generated successfully",
     },
   ];
 }

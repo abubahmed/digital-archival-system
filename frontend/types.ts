@@ -10,14 +10,6 @@ export interface LogLine {
   msg: string;
 }
 
-export interface CurrentJob {
-  state: RunState;
-  statusText: string;
-  progress: number;
-  logs: LogLine[];
-  details: string;
-}
-
 export interface PastJob {
   id: string;
   createdAt: number;
@@ -28,7 +20,5 @@ export interface PastJob {
   downloadUrl?: string;
   state: RunState;
   statusText: string;
-  progress: number;
   logs: LogLine[];
-  details: string;
 }

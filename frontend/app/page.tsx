@@ -17,7 +17,7 @@ export default function Page() {
   const [archivalType, setArchivalType] = useState<ArchivalType>("singleDay");
 
   // Dates
-  const todayStr = useMemo(() => getTodayStr(), []);
+  const todayStr = getTodayStr();
 
   const [date, setDate] = useState<string>(todayStr);
   const [dateStartTime, setDateStartTime] = useState<string>("00:00");
@@ -38,19 +38,14 @@ export default function Page() {
   const [authToken, setAuthToken] = useState<string>("");
   const [rememberAuth, setRememberAuth] = useLocalStorage<boolean>("archive_ui_remember_auth", true);
 
-  // Metadata/METS/ALTO encoding
-  const [includeMetadataAndMetsAlto, setIncludeMetadataAndMetsAlto] = useState<boolean>(false);
-
   // Run state
   const [runState, setRunState] = useState<RunState>("idle");
   const [statusText, setStatusText] = useState<string>("Ready.");
-  const [details, setDetails] = useState<string>("");
-  const [progress, setProgress] = useState<number>(0);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [currentJobDownloadUrl, setCurrentJobDownloadUrl] = useState<string | undefined>(undefined);
 
-  // Past jobs
-  const [pastJobs, setPastJobs] = useState<PastJob[]>(getInitialPastJobs());
+  // All jobs - initialize empty to avoid hydration mismatch
+  const [allJobs, setAllJobs] = useState<PastJob[]>([]);
 
   // Current job ID and creation time (null when no job is running/completed)
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -62,6 +57,11 @@ export default function Page() {
   // Log viewport ref for auto-scrolling
   const logViewportRef = useRef<HTMLDivElement | null>(null);
 
+  // Initialize allJobs on client side only to avoid hydration mismatch
+  useEffect(() => {
+    setAllJobs(getInitialPastJobs());
+  }, []);
+
   // Auto-scroll logs
   useEffect(() => {
     const el = logViewportRef.current;
@@ -69,37 +69,47 @@ export default function Page() {
     el.scrollTop = el.scrollHeight;
   }, [logs.length]);
 
+  // Sync current job state to allJobs list
+  useEffect(() => {
+    if (currentJobId) {
+      setAllJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === currentJobId
+            ? {
+                ...job,
+                state: runState,
+                statusText: statusText,
+                logs: logs,
+                downloadUrl: currentJobDownloadUrl,
+              }
+            : job
+        )
+      );
+    }
+  }, [currentJobId, runState, statusText, logs, currentJobDownloadUrl]);
+
   // Get currently displayed job info
   const displayedJob = useMemo(() => {
     if (!displayedJobId) return null;
 
-    // Check if it's the current job (using live state)
-    if (displayedJobId === currentJobId) {
-      return {
-        isCurrent: true,
-        label: "Current job",
-        createdAt: currentJobCreatedAt || Date.now(),
-        config: { source, archivalType },
-      };
-    }
-
-    // Otherwise, find it in past jobs
-    const job = pastJobs.find((j) => j.id === displayedJobId);
+    // Find the job in allJobs list
+    const job = allJobs.find((j) => j.id === displayedJobId);
     if (!job) return null;
+
+    // If it's the current job, use live state for downloadUrl
+    const downloadUrl = displayedJobId === currentJobId ? currentJobDownloadUrl : job.downloadUrl;
+
     return {
-      isCurrent: false,
-      label: "Past job",
       createdAt: job.createdAt,
       config: job.config,
+      downloadUrl: downloadUrl,
     };
-  }, [displayedJobId, currentJobId, currentJobCreatedAt, pastJobs, source, archivalType]);
+  }, [displayedJobId, currentJobId, allJobs, currentJobDownloadUrl]);
 
-  function openPastJob(job: PastJob) {
+  function openJob(job: PastJob) {
     setDisplayedJobId(job.id);
     setRunState(job.state);
     setStatusText(job.statusText);
-    setDetails(job.details);
-    setProgress(job.progress);
     setLogs(job.logs);
   }
 
@@ -169,7 +179,24 @@ export default function Page() {
   }, [authToken, rememberAuth]);
 
   function pushLog(level: LogLevel, msg: string) {
-    setLogs((prev) => [...prev, { ts: Date.now(), level, msg }]);
+    const newLog = { ts: Date.now(), level, msg };
+    setLogs((prev) => {
+      const updated = [...prev, newLog];
+      // Update the job in allJobs list if there's a current job
+      if (currentJobId) {
+        setAllJobs((prevJobs) =>
+          prevJobs.map((job) =>
+            job.id === currentJobId
+              ? {
+                  ...job,
+                  logs: updated,
+                }
+              : job
+          )
+        );
+      }
+      return updated;
+    });
   }
 
   const validationError = useMemo(
@@ -178,16 +205,10 @@ export default function Page() {
     [archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken]
   );
 
-  // Check if auth token is valid for downloads
-  const isAuthTokenValid = useMemo(() => {
-    return !!(authToken && authToken.trim());
-  }, [authToken]);
-
   async function generateArchive() {
     if (validationError) {
       setRunState("error");
       setStatusText("Fix inputs before running.");
-      setDetails(validationError);
       pushLog("error", validationError);
       return;
     }
@@ -201,25 +222,25 @@ export default function Page() {
 
     setRunState("running");
     setStatusText("Running...");
-    setDetails("");
-    setProgress(2);
     setLogs([]);
     setCurrentJobDownloadUrl(undefined);
 
+    // Add job to allJobs list immediately when it starts
+    setAllJobs((prev) => [
+      {
+        id: jobId,
+        createdAt,
+        config: { source, archivalType },
+        downloadUrl: undefined,
+        state: "running",
+        statusText: "Running...",
+        logs: [],
+      },
+      ...prev,
+    ]);
+
     pushLog("info", "Archive job configured.");
     pushLog("info", `Source: ${source}, Type: ${archivalType}`);
-    if (includeMetadataAndMetsAlto) {
-      pushLog("info", "Metadata and METS/ALTO encoding enabled");
-    }
-
-    // Progress ticker (simulated)
-    const ticker = window.setInterval(() => {
-      setProgress((p) => {
-        if (p >= 95) return p;
-        const bump = 3 + Math.floor(Math.random() * 6);
-        return Math.min(95, p + bump);
-      });
-    }, 350);
 
     try {
       // Simulate archive process
@@ -235,7 +256,6 @@ export default function Page() {
       await sleep(250);
       pushLog("info", "Archive process complete.");
 
-      setProgress(100);
       setRunState("success");
       setStatusText("Done (simulated).");
 
@@ -245,56 +265,48 @@ export default function Page() {
         start,
         end,
         todayStr,
-        authToken,
       });
       setCurrentJobDownloadUrl(downloadUrl);
 
-      // Add to past jobs - use the existing jobId from when job started
-      // Use functional update to capture current state
-      setPastJobs((prev) => [
-        {
-          id: currentJobId!,
-          createdAt: currentJobCreatedAt!,
-          config: { source, archivalType },
-          downloadUrl,
-          state: "success",
-          statusText: "Done (simulated).",
-          progress: 100,
-          logs: [...logs],
-          details: details || "",
-        },
-        ...prev,
-      ]);
-      setCurrentJobId(null); // Job is now in past jobs
+      // Update the job in allJobs list with final state
+      setAllJobs((prev) =>
+        prev.map((job) =>
+          job.id === currentJobId
+            ? {
+                ...job,
+                downloadUrl,
+                state: "success",
+                statusText: "Done (simulated).",
+                logs: [...logs],
+              }
+            : job
+        )
+      );
+      setCurrentJobId(null);
       setCurrentJobCreatedAt(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setRunState("error");
       setStatusText("Failed.");
-      setDetails(msg);
       pushLog("error", msg);
 
-      // Add to past jobs even on error - use the existing jobId from when job started
+      // Update the job in allJobs list with error state
       const errorTimestamp = Date.now();
-      setPastJobs((prev) => [
-        {
-          id: currentJobId!,
-          createdAt: currentJobCreatedAt!,
-          config: { source, archivalType },
-          downloadUrl: undefined,
-          state: "error",
-          statusText: "Failed.",
-          progress: progress,
-          logs: [...logs, { ts: errorTimestamp, level: "error", msg }],
-          details: msg,
-        },
-        ...prev,
-      ]);
-      setCurrentJobId(null); // Job is now in past jobs
+      setAllJobs((prev) =>
+        prev.map((job) =>
+          job.id === currentJobId
+            ? {
+                ...job,
+                downloadUrl: undefined,
+                state: "error",
+                statusText: "Failed.",
+                logs: [...logs, { ts: errorTimestamp, level: "error", msg }],
+              }
+            : job
+        )
+      );
+      setCurrentJobId(null);
       setCurrentJobCreatedAt(null);
-    } finally {
-      window.clearInterval(ticker);
-      setProgress((p) => (p < 100 && runState !== "error" ? 100 : p));
     }
   }
 
@@ -316,7 +328,7 @@ export default function Page() {
           {/* Configuration Panel */}
           <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900">Configuration</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Create a new archive</h2>
               <p className="mt-1 text-sm text-gray-600">Select source and archival type, then configure details.</p>
             </div>
 
@@ -325,7 +337,7 @@ export default function Page() {
               <div>
                 <div className="mb-2">
                   <div className="text-sm font-medium text-gray-900">Authentication</div>
-                  <div className="text-xs text-gray-600">API key or token (required)</div>
+                  <div className="text-xs text-gray-600">API key (required)</div>
                 </div>
                 <input
                   id="token"
@@ -579,22 +591,6 @@ export default function Page() {
                 )}
               </div>
 
-              {/* Metadata/METS/ALTO Encoding */}
-              <div>
-                <div className="mb-2">
-                  <div className="text-sm font-medium text-gray-900">Encoding Options</div>
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={includeMetadataAndMetsAlto}
-                    onChange={(e) => setIncludeMetadataAndMetsAlto(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  Include metadata and METS/ALTO encoding
-                </label>
-              </div>
-
               {/* Generate Button */}
               <div>
                 <button
@@ -615,42 +611,12 @@ export default function Page() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Run Status</h2>
-                  {displayedJob && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-xs text-gray-600">
-                        {displayedJob.isCurrent ? "Current job" : "Past job"}
-                      </span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-600">
-                        {displayedJob.config.source} - {displayedJob.config.archivalType}
-                      </span>
-                      {!displayedJob.isCurrent && (
-                        <>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-600">
-                            {new Date(displayedJob.createdAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </>
-                      )}
+                  {displayedJobId && (
+                    <div className="mt-1">
+                      <span className="text-xs text-gray-600">{displayedJobId}</span>
                     </div>
                   )}
                 </div>
-                {displayedJobId !== null && displayedJobId !== currentJobId && currentJobId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDisplayedJobId(currentJobId);
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                    View current
-                  </button>
-                )}
               </div>
             </div>
 
@@ -659,41 +625,27 @@ export default function Page() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <div className="text-sm font-medium text-gray-900">Status</div>
-                  {runState === "success" &&
-                    currentJobDownloadUrl &&
-                    displayedJobId === currentJobId &&
-                    isAuthTokenValid && (
-                      <a
-                        href={currentJobDownloadUrl}
-                        download
-                        onClick={(e) => {
-                          if (!isAuthTokenValid) {
-                            e.preventDefault();
-                            alert("Authentication token is required to download.");
-                          }
-                        }}
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
-                        Download
-                      </a>
-                    )}
+                  {displayedJobId && (
+                    <a
+                      href={displayedJob?.downloadUrl || "#"}
+                      download={!!displayedJob?.downloadUrl}
+                      onClick={(e) => {
+                        if (!displayedJob?.downloadUrl) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors whitespace-nowrap ${
+                        displayedJob?.downloadUrl && runState === "success"
+                          ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                          : "bg-gray-400 cursor-not-allowed opacity-60"
+                      }`}>
+                      Download
+                    </a>
+                  )}
                 </div>
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
                   {statusText}
                 </div>
-
-                {/* Progress Bar */}
-                {(isRunning || runState === "success" || runState === "error") && (
-                  <div className="mt-3">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          runState === "error" ? "bg-red-600" : runState === "success" ? "bg-green-600" : "bg-black"
-                        }`}
-                        style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Debug Logs */}
@@ -717,77 +669,41 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Details */}
+              {/* All Jobs */}
               <div>
-                <div className="mb-2 text-sm font-medium text-gray-900">Details</div>
-                <div className="max-h-48 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900">
-                  {details || "(none)"}
-                </div>
-              </div>
-
-              {/* Past Jobs */}
-              <div>
-                <div className="mb-2 text-sm font-medium text-gray-900">Past Jobs</div>
-                {pastJobs.length === 0 ? (
+                <div className="mb-2 text-sm font-medium text-gray-900">All Jobs</div>
+                {allJobs.length === 0 ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                    No past jobs yet.
+                    No jobs yet.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
-                    {pastJobs.map((job) => {
-                      const date = new Date(job.createdAt);
-                      const dateStr = date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      });
-                      const timeStr = date.toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
+                    {allJobs.map((job) => {
+                      const isOpen = displayedJobId === job.id;
                       return (
                         <div
                           key={job.id}
                           className="rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900">
-                                {job.config.source} - {job.config.archivalType}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-0.5">
-                                {dateStr} at {timeStr}
-                              </div>
+                              <div className="text-sm font-medium text-gray-900">{job.id}</div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openPastJob(job)}
-                                className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
-                                Open
-                              </button>
-                              {job.downloadUrl &&
-                                isAuthTokenValid &&
-                                (() => {
-                                  // Add auth token to download URL
-                                  const separator = job.downloadUrl.includes("?") ? "&" : "?";
-                                  const urlWithToken = `${job.downloadUrl}${separator}token=${encodeURIComponent(
-                                    authToken
-                                  )}`;
-                                  return (
-                                    <a
-                                      href={urlWithToken}
-                                      download
-                                      onClick={(e) => {
-                                        if (!isAuthTokenValid) {
-                                          e.preventDefault();
-                                          alert("Authentication token is required to download.");
-                                        }
-                                      }}
-                                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap">
-                                      Download
-                                    </a>
-                                  );
-                                })()}
+                              {isOpen ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="rounded-lg bg-gray-400 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed opacity-60 whitespace-nowrap">
+                                  Currently viewing
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openJob(job)}
+                                  className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
+                                  Open
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

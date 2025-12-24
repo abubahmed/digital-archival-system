@@ -1,2 +1,0 @@
-- input article url and newsletter urls and staple them together with mets/alto encoding
-- create daily issues with newsletter and article urls
