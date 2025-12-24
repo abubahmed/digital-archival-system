@@ -183,28 +183,3 @@ export function getWindowPreview(
     body: `Using explicit URL list (${urlCount} URL${urlCount === 1 ? "" : "s"}).`,
   };
 }
-
-// Get download URL based on archival type
-export function getDownloadUrl(
-  archivalType: "singleDay" | "dateRange" | "urls" | "mostRecent",
-  params: {
-    date?: string;
-    start?: string;
-    end?: string;
-    todayStr?: string;
-  }
-): string | undefined {
-  if (archivalType === "singleDay") {
-    if (!params.date) return undefined;
-    return `/api/run-archive-zip?start=${params.date}&end=${params.date}`;
-  }
-
-  if (archivalType === "dateRange") {
-    if (!params.start || !params.end) return undefined;
-    return `/api/run-archive-zip?start=${params.start}&end=${params.end}`;
-  }
-
-  // Dummy link for other types (urls, mostRecent)
-  const today = params.todayStr || getTodayStr();
-  return `/api/run-archive-zip?start=${today}&end=${today}`;
-}

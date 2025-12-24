@@ -35,4 +35,3 @@ export function generateJobId(source: Source, archivalType: ArchivalType, timest
   const randomStr = generateRandomString(32);
   return `${source}-${archivalType}-${timestampStr}-${randomStr}`;
 }
-

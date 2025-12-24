@@ -2,14 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import RadioCard from "../components/RadioCard";
-import type { LogLine } from "../types";
-import { getTodayStr, getInitialMostRecentSince, getWindowPreview, getDownloadUrl } from "../utils/dateHelpers";
-import { type LogLevel, formatLogTs, levelClass } from "../utils/logHelpers";
+import { getTodayStr, getInitialMostRecentSince, getWindowPreview } from "../utils/dateHelpers";
+import { formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
 import { generateJobId } from "../utils/jobHelpers";
-import { useLocalStorage } from "./hooks/useLocalStorage";
-import type { Source, ArchivalType, RunState, PastJob } from "../types";
+import { useJobManagement } from "../hooks/useJobManagement";
+import { jobListUtils } from "../utils/jobManagement";
+import type { Source, ArchivalType, PastJob } from "../types";
 import { getInitialPastJobs } from "../data";
+import { runFakeArchivalProcess, type ArchivalConfig } from "../utils/archivalProcess";
+
+const LOCAL_STORAGE_KEYS = {
+  REMEMBER_AUTH: "archive_ui_remember_auth",
+  AUTH_TOKEN: "archive_ui_auth_token",
+};
 
 export default function Page() {
   // Core configuration
@@ -36,23 +42,28 @@ export default function Page() {
 
   // Auth
   const [authToken, setAuthToken] = useState<string>("");
-  const [rememberAuth, setRememberAuth] = useLocalStorage<boolean>("archive_ui_remember_auth", true);
+  const [rememberAuth, setRememberAuth] = useState<boolean>(() => {
+    try {
+      const saved = window.localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_AUTH);
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  });
 
-  // Run state
-  const [runState, setRunState] = useState<RunState>("idle");
-  const [statusText, setStatusText] = useState<string>("Ready.");
-  const [logs, setLogs] = useState<LogLine[]>([]);
-  const [currentJobDownloadUrl, setCurrentJobDownloadUrl] = useState<string | undefined>(undefined);
-
-  // All jobs - initialize empty to avoid hydration mismatch
-  const [allJobs, setAllJobs] = useState<PastJob[]>([]);
-
-  // Current job ID and creation time (null when no job is running/completed)
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  const [currentJobCreatedAt, setCurrentJobCreatedAt] = useState<number | null>(null);
-
-  // Currently displayed job ID (always a string when a job exists)
-  const [displayedJobId, setDisplayedJobId] = useState<string | null>(null);
+  // Job management hook
+  const {
+    allJobs,
+    displayedJobId,
+    displayedJob,
+    runState,
+    statusText,
+    logs,
+    addJob,
+    openJob,
+    createJobLogFunction,
+    setAllJobs,
+  } = useJobManagement([]);
 
   // Log viewport ref for auto-scrolling
   const logViewportRef = useRef<HTMLDivElement | null>(null);
@@ -60,7 +71,7 @@ export default function Page() {
   // Initialize allJobs on client side only to avoid hydration mismatch
   useEffect(() => {
     setAllJobs(getInitialPastJobs());
-  }, []);
+  }, [setAllJobs]);
 
   // Auto-scroll logs
   useEffect(() => {
@@ -68,50 +79,6 @@ export default function Page() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [logs.length]);
-
-  // Sync current job state to allJobs list
-  useEffect(() => {
-    if (currentJobId) {
-      setAllJobs((prevJobs) =>
-        prevJobs.map((job) =>
-          job.id === currentJobId
-            ? {
-                ...job,
-                state: runState,
-                statusText: statusText,
-                logs: logs,
-                downloadUrl: currentJobDownloadUrl,
-              }
-            : job
-        )
-      );
-    }
-  }, [currentJobId, runState, statusText, logs, currentJobDownloadUrl]);
-
-  // Get currently displayed job info
-  const displayedJob = useMemo(() => {
-    if (!displayedJobId) return null;
-
-    // Find the job in allJobs list
-    const job = allJobs.find((j) => j.id === displayedJobId);
-    if (!job) return null;
-
-    // If it's the current job, use live state for downloadUrl
-    const downloadUrl = displayedJobId === currentJobId ? currentJobDownloadUrl : job.downloadUrl;
-
-    return {
-      createdAt: job.createdAt,
-      config: job.config,
-      downloadUrl: downloadUrl,
-    };
-  }, [displayedJobId, currentJobId, allJobs, currentJobDownloadUrl]);
-
-  function openJob(job: PastJob) {
-    setDisplayedJobId(job.id);
-    setRunState(job.state);
-    setStatusText(job.statusText);
-    setLogs(job.logs);
-  }
 
   const isRunning = runState === "running";
 
@@ -123,7 +90,7 @@ export default function Page() {
       .filter(Boolean);
   }, [urlsText]);
 
-  // Window preview
+  // Window selection preview
   const windowPreview = useMemo(
     () =>
       getWindowPreview(archivalType, {
@@ -153,51 +120,40 @@ export default function Page() {
     ]
   );
 
-  // Load auth token from localStorage on mount if rememberAuth is true
+  // Save rememberAuth preference to localStorage
   useEffect(() => {
-    if (rememberAuth) {
-      try {
-        const saved = window.localStorage.getItem("archive_ui_auth_token");
-        if (saved) setAuthToken(saved);
-      } catch {
-        // ignore
-      }
+    try {
+      window.localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_AUTH, String(rememberAuth));
+    } catch {
+      // ignore
     }
   }, [rememberAuth]);
 
-  // Save/remove auth token based on rememberAuth checkbox
+  // Load and save auth token from/to localStorage
+  const hasLoadedToken = useRef(false);
   useEffect(() => {
     try {
-      if (rememberAuth && authToken) {
-        window.localStorage.setItem("archive_ui_auth_token", authToken);
-      } else if (!rememberAuth) {
-        window.localStorage.removeItem("archive_ui_auth_token");
+      if (rememberAuth) {
+        // Load on mount if not already loaded
+        if (!hasLoadedToken.current) {
+          const saved = window.localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
+          if (saved) {
+            setAuthToken(saved);
+          }
+          hasLoadedToken.current = true;
+        } else if (authToken) {
+          // Save when authToken changes (after initial load)
+          window.localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, authToken);
+        }
+      } else {
+        // Remove when rememberAuth is disabled
+        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
+        hasLoadedToken.current = false;
       }
     } catch {
       // ignore
     }
   }, [authToken, rememberAuth]);
-
-  function pushLog(level: LogLevel, msg: string) {
-    const newLog = { ts: Date.now(), level, msg };
-    setLogs((prev) => {
-      const updated = [...prev, newLog];
-      // Update the job in allJobs list if there's a current job
-      if (currentJobId) {
-        setAllJobs((prevJobs) =>
-          prevJobs.map((job) =>
-            job.id === currentJobId
-              ? {
-                  ...job,
-                  logs: updated,
-                }
-              : job
-          )
-        );
-      }
-      return updated;
-    });
-  }
 
   const validationError = useMemo(
     () =>
@@ -207,106 +163,70 @@ export default function Page() {
 
   async function generateArchive() {
     if (validationError) {
-      setRunState("error");
-      setStatusText("Fix inputs before running.");
-      pushLog("error", validationError);
+      // For validation errors, we don't create a job, just show the error
+      // The error is already displayed in the UI via validationError
       return;
     }
 
     // Generate job ID at the start
     const createdAt = Date.now();
     const jobId = generateJobId(source, archivalType, createdAt);
-    setCurrentJobId(jobId);
-    setCurrentJobCreatedAt(createdAt);
-    setDisplayedJobId(jobId); // Switch to current job
 
-    setRunState("running");
-    setStatusText("Running...");
-    setLogs([]);
-    setCurrentJobDownloadUrl(undefined);
+    // Create and add job to list
+    const newJob = jobListUtils.createJob(jobId, createdAt, source, archivalType, "running", "Running...", []);
+    addJob(newJob);
+    openJob(newJob);
 
-    // Add job to allJobs list immediately when it starts
-    setAllJobs((prev) => [
-      {
-        id: jobId,
-        createdAt,
-        config: { source, archivalType },
-        downloadUrl: undefined,
-        state: "running",
-        statusText: "Running...",
-        logs: [],
-      },
-      ...prev,
-    ]);
-
-    pushLog("info", "Archive job configured.");
-    pushLog("info", `Source: ${source}, Type: ${archivalType}`);
+    // Create job-specific log function
+    const pushJobLog = createJobLogFunction(jobId);
+    pushJobLog("info", "Archive job configured.");
+    pushJobLog("info", `Source: ${source}, Type: ${archivalType}`);
 
     try {
-      // Simulate archive process
-      pushLog("info", "Starting archive process...");
-      await sleep(300);
-      pushLog("debug", "Validating inputs...");
-      await sleep(250);
-      pushLog("info", "Fetching items...");
-      await sleep(300);
-      pushLog("info", "Processing items...");
-      await sleep(300);
-      pushLog("info", "Would prepare a browser download");
-      await sleep(250);
-      pushLog("info", "Archive process complete.");
-
-      setRunState("success");
-      setStatusText("Done (simulated).");
-
-      // Calculate download URL for current job
-      const downloadUrl = getDownloadUrl(archivalType, {
+      // Prepare archival configuration
+      const archivalConfig: ArchivalConfig = {
+        source,
+        archivalType,
+        authToken,
         date,
+        dateStartTime,
+        dateEndTime,
         start,
         end,
-        todayStr,
-      });
-      setCurrentJobDownloadUrl(downloadUrl);
+        startTime,
+        endTime,
+        urls: normalizedUrls,
+        mostRecentCount,
+        mostRecentSince,
+      };
 
-      // Update the job in allJobs list with final state
-      setAllJobs((prev) =>
-        prev.map((job) =>
-          job.id === currentJobId
-            ? {
-                ...job,
-                downloadUrl,
-                state: "success",
-                statusText: "Done (simulated).",
-                logs: [...logs],
-              }
-            : job
-        )
-      );
-      setCurrentJobId(null);
-      setCurrentJobCreatedAt(null);
+      // Run the archival process
+      const result = await runFakeArchivalProcess(archivalConfig, pushJobLog);
+
+      // Update job with final state - use functional update to get latest logs
+      setAllJobs((prev) => {
+        const currentJob = jobListUtils.findJob(prev, jobId);
+        const currentLogs = currentJob?.logs ?? [];
+        return jobListUtils.updateJobState(
+          prev,
+          jobId,
+          result.state,
+          result.statusText,
+          currentLogs,
+          result.downloadUrl
+        );
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setRunState("error");
-      setStatusText("Failed.");
-      pushLog("error", msg);
+      pushJobLog("error", msg);
 
-      // Update the job in allJobs list with error state
-      const errorTimestamp = Date.now();
-      setAllJobs((prev) =>
-        prev.map((job) =>
-          job.id === currentJobId
-            ? {
-                ...job,
-                downloadUrl: undefined,
-                state: "error",
-                statusText: "Failed.",
-                logs: [...logs, { ts: errorTimestamp, level: "error", msg }],
-              }
-            : job
-        )
-      );
-      setCurrentJobId(null);
-      setCurrentJobCreatedAt(null);
+      // Update job with error state - use functional update to get latest logs
+      setAllJobs((prev) => {
+        const currentJob = jobListUtils.findJob(prev, jobId);
+        const currentLogs = currentJob?.logs ?? [];
+        const errorLogs = [...currentLogs, { ts: Date.now(), level: "error" as const, msg }];
+        return jobListUtils.updateJobState(prev, jobId, "error", "Failed.", errorLogs, undefined);
+      });
     }
   }
 
@@ -316,7 +236,7 @@ export default function Page() {
         <header className="border-gray-200 pb-8">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Prince Archival</h1>
-            <p className="text-base text-gray-600 leading-relaxed">
+            <p className="text-base text-gray-700 leading-relaxed">
               Configure and generate archives from various sources. All times are in EST (Eastern Standard Time). Data
               sources include Instagram, Twitter / X, TikTok, Newsletter, Daily Prince website, and Daily Prince website
               + newsletter (issues). Archival methods include single day, date range, certain URLs, and most recent.
@@ -336,8 +256,7 @@ export default function Page() {
               {/* Auth */}
               <div>
                 <div className="mb-2">
-                  <div className="text-sm font-medium text-gray-900">Authentication</div>
-                  <div className="text-xs text-gray-600">API key (required)</div>
+                  <div className="text-sm font-medium text-gray-900">API Key</div>
                 </div>
                 <input
                   id="token"
@@ -383,7 +302,6 @@ export default function Page() {
               <div>
                 <div className="mb-3">
                   <div className="text-sm font-medium text-gray-900">Type of archival</div>
-                  <div className="text-xs text-gray-600">Choose the selection mode for what to archive.</div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <RadioCard
@@ -425,7 +343,6 @@ export default function Page() {
               <div className="space-y-4">
                 <div>
                   <div className="text-sm font-medium text-gray-900">Selection details</div>
-                  <p className="text-xs text-gray-600">Select the details of the selection mode.</p>
                 </div>
 
                 {archivalType === "singleDay" && (
@@ -623,28 +540,19 @@ export default function Page() {
             <div className="space-y-6 px-6 py-6">
               {/* Status */}
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-sm font-medium text-gray-900">Status</div>
-                  {displayedJobId && (
-                    <a
-                      href={displayedJob?.downloadUrl || "#"}
-                      download={!!displayedJob?.downloadUrl}
-                      onClick={(e) => {
-                        if (!displayedJob?.downloadUrl) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors whitespace-nowrap ${
-                        displayedJob?.downloadUrl && runState === "success"
-                          ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                          : "bg-gray-400 cursor-not-allowed opacity-60"
-                      }`}>
-                      Download
-                    </a>
-                  )}
-                </div>
+                <div className="mb-2 text-sm font-medium text-gray-900">Status</div>
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
-                  {statusText}
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{statusText}</span>
+                    {runState === "success" && displayedJob?.downloadUrl && (
+                      <a
+                        href={displayedJob.downloadUrl}
+                        download
+                        className="text-blue-600 hover:text-blue-700 underline text-sm">
+                        Download
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -659,7 +567,7 @@ export default function Page() {
                   {logs.length === 0 ? (
                     <div className="text-gray-400">No logs yet. Click "Generate Archive" to start.</div>
                   ) : (
-                    logs.map((l, idx) => (
+                    logs.map((l: (typeof logs)[0], idx: number) => (
                       <div key={`${l.ts}-${idx}`} className="whitespace-pre-wrap break-words">
                         <span className="text-gray-400">{formatLogTs(l.ts)}</span>{" "}
                         <span className={levelClass(l.level)}>[{l.level}]</span> {l.msg}
@@ -678,7 +586,7 @@ export default function Page() {
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
-                    {allJobs.map((job) => {
+                    {allJobs.map((job: PastJob) => {
                       const isOpen = displayedJobId === job.id;
                       return (
                         <div
@@ -694,7 +602,7 @@ export default function Page() {
                                   type="button"
                                   disabled
                                   className="rounded-lg bg-gray-400 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed opacity-60 whitespace-nowrap">
-                                  Currently viewing
+                                  Open
                                 </button>
                               ) : (
                                 <button
@@ -727,8 +635,4 @@ export default function Page() {
       </div>
     </div>
   );
-}
-
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
