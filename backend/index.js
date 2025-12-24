@@ -3,6 +3,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { config } from "./config.js";
 import { jobsRouter } from "./routes/jobs.js";
+import "./db.js";
 
 const app = express();
 
@@ -44,6 +45,6 @@ app.use((err, req, res, next) => {
 
 const PORT = config.port;
 app.listen(PORT, () => {
-    console.log(`Backend server running on http://localhost:${PORT}`);
+    console.log(`Backend server running on port ${PORT}`);
 });
 

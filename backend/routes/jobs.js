@@ -1,23 +1,84 @@
 import express from "express";
+import { getAllJobs, createJob, getJobById, updateJob } from "../db/jobs.js";
+import { addLog } from "../db/logs.js";
 
 const router = express.Router();
 
 // GET /jobs - List all jobs
 router.get("/", (req, res) => {
-    // TODO: Implement job listing
-    res.json({ jobs: [] });
+    try {
+        const jobs = getAllJobs();
+        res.json({ jobs });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // POST /jobs - Create/start a new archival job
 router.post("/", (req, res) => {
-    // TODO: Implement job creation
-    res.status(201).json({ jobId: "placeholder-job-id" });
+    try {
+        const {
+            source,
+            archivalType,
+            date,
+            dateStartTime,
+            dateEndTime,
+            start,
+            end,
+            startTime,
+            endTime,
+            urls,
+            mostRecentCount,
+            mostRecentSince,
+        } = req.body;
+
+        // Generate job ID (simple timestamp-based for now)
+        const id = `job_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const createdAt = Date.now();
+
+        const config = {
+            source,
+            archivalType,
+            date,
+            dateStartTime,
+            dateEndTime,
+            start,
+            end,
+            startTime,
+            endTime,
+            urls,
+            mostRecentCount,
+            mostRecentSince,
+        };
+
+        const job = createJob({
+            id,
+            createdAt,
+            config,
+            state: "running",
+            statusText: "Running...",
+        });
+
+        res.status(201).json({ jobId: job.id });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // GET /jobs/:jobId - Get specific job details
 router.get("/:jobId", (req, res) => {
-    // TODO: Implement job details retrieval
-    res.status(404).json({ error: "Job not found" });
+    try {
+        const { jobId } = req.params;
+        const job = getJobById(jobId);
+
+        if (!job) {
+            return res.status(404).json({ error: "Job not found" });
+        }
+
+        res.json(job);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 export { router as jobsRouter };
