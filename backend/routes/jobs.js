@@ -1,3 +1,12 @@
+/**
+ * Routes for jobs.
+ * 
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ * 
+ * @file jobs.js
+ */
+
 import express from "express";
 import { getAllJobs, createJob, getJobById } from "../db/jobs.js";
 import { generateJobId } from "../utils/jobHelpers.js";
@@ -5,7 +14,12 @@ import { validateBeforeRun } from "../utils/validation.js";
 
 const router = express.Router();
 
-// GET /jobs - List all jobs
+/**
+ * GET /jobs - List all jobs
+ * 
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 router.get("/", (req, res) => {
     try {
         const jobs = getAllJobs();
@@ -15,7 +29,12 @@ router.get("/", (req, res) => {
     }
 });
 
-// POST /jobs - Create/start a new archival job
+/**
+ * POST /jobs - Create/start a new archival job
+ * 
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 router.post("/", (req, res) => {
     try {
         console.log("req.body", req.body);
@@ -44,7 +63,12 @@ router.post("/", (req, res) => {
     }
 });
 
-// GET /jobs/:jobId - Get specific job details
+/**
+ * GET /jobs/:jobId - Get specific job details
+ * 
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 router.get("/:jobId", (req, res) => {
     try {
         const { jobId } = req.params;
@@ -60,10 +84,16 @@ router.get("/:jobId", (req, res) => {
     }
 });
 
-// GET /jobs/:jobId/stream - Server-Sent Events stream for job updates
+/**
+ * GET /jobs/:jobId/stream - Server-Sent Events stream for job updates
+ * 
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 router.get("/:jobId/stream", (req, res) => {
     const { jobId } = req.params;
 
+    // Set the headers for the SSE stream.
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -71,6 +101,7 @@ router.get("/:jobId/stream", (req, res) => {
     res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
     res.write(": connected\n\n");
 
+    // Get the job from the database.
     const job = getJobById(jobId);
     if (!job) {
         res.write(`data: ${JSON.stringify({ error: "Job not found" })}\n\n`);
@@ -79,6 +110,7 @@ router.get("/:jobId/stream", (req, res) => {
         return;
     }
 
+    // Write the job to the SSE stream.
     res.write(`data: ${JSON.stringify({ job })}\n\n`);
     const DELAY_BETWEEN_UPDATES = 5000;
     if (job.state !== "running") {
@@ -87,6 +119,7 @@ router.get("/:jobId/stream", (req, res) => {
         return;
     }
 
+    // Set the interval to write the job updates to the SSE stream.
     const intervalId = setInterval(() => {
         const currentJob = getJobById(jobId);
         if (!currentJob) {
@@ -96,6 +129,7 @@ router.get("/:jobId/stream", (req, res) => {
             return;
         }
 
+        // Add a new log to the current job.
         console.log("Writing to job with id", jobId, "at", new Date().toISOString());
         res.write(`data: ${JSON.stringify({ job: currentJob })}\n\n`);
         if (currentJob.state !== "running") {
@@ -105,6 +139,7 @@ router.get("/:jobId/stream", (req, res) => {
         }
     }, DELAY_BETWEEN_UPDATES);
 
+    // On close, clear the interval and end the SSE stream.
     req.on("close", () => {
         clearInterval(intervalId);
         res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);

@@ -11,6 +11,9 @@ import type { Source, ArchivalType, RunState, Job, Jobs, ArchivalConfig } from "
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
 import type { getJobsResponse, getJobResponse, createJobResponse } from "../types";
 
+const REMEMBER_AUTH_TOKEN_KEY = "rememberAuthToken";
+const AUTH_TOKEN_KEY = "authToken";
+
 export default function Page() {
   // Core configuration
   const [source, setSource] = useState<Source>("dailyPrince");
@@ -37,12 +40,34 @@ export default function Page() {
     mostRecentSince: getInitialMostRecentSince(),
   });
 
-  // Auth and jobs
   const [authToken, setAuthToken] = useState<string>("");
+  const [saveAuthToken, setSaveAuthToken] = useState<boolean>(false);
+
   const [jobs, setJobs] = useState<Jobs>({});
   const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const saveAuthToken = localStorage.getItem(REMEMBER_AUTH_TOKEN_KEY);
+    if (saveAuthToken === "true") {
+      setSaveAuthToken(true);
+      setAuthToken(localStorage.getItem(AUTH_TOKEN_KEY) ?? "");
+    } else {
+      setSaveAuthToken(false);
+      setAuthToken("");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (saveAuthToken) {
+      localStorage.setItem(REMEMBER_AUTH_TOKEN_KEY, "true");
+      localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+    } else {
+      localStorage.setItem(REMEMBER_AUTH_TOKEN_KEY, "false");
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  }, [saveAuthToken, authToken]);
 
   // Fetches the list of all jobs from the API and sets the jobs state.
   const fetchAllJobs = async () => {
@@ -56,25 +81,6 @@ export default function Page() {
     } catch (error) {
       console.error("Error fetching jobs:", error);
       setJobs({});
-    }
-  };
-
-  // Fetches the details of a single job from the API and sets the displayed job state.
-  const fetchSingleJob = async (jobId: string): Promise<Job | null> => {
-    try {
-      const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
-      const response = await apiClient.get<getJobResponse>(JOB_DETAIL_ENDPOINT, authToken);
-      const job = response.job;
-      console.log("Fetched job:", job);
-
-      setJobs((prev) => ({ ...prev, [job.jobId]: job }));
-      if (job.jobId === displayedJob?.jobId) {
-        setDisplayedJob(job);
-      }
-      return job;
-    } catch (error) {
-      console.error("Error fetching job detail:", error);
-      return null;
     }
   };
 
@@ -206,7 +212,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-white via-gray-50 to-gray-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 pb-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <header className="border-gray-200 pb-8">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Prince Archival</h1>
@@ -242,6 +248,15 @@ export default function Page() {
                   autoComplete="off"
                   required
                 />
+                <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={saveAuthToken}
+                    onChange={(e) => setSaveAuthToken(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  Remember token in this browser (localStorage)
+                </label>
               </div>
 
               {/* Source Selection */}
@@ -557,7 +572,7 @@ export default function Page() {
                 <div className="mb-2 text-sm font-medium text-gray-900">All Jobs</div>
                 {Object.keys(jobs).length === 0 ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                    No jobs yet.
+                    No jobs found.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
@@ -600,15 +615,6 @@ export default function Page() {
             </div>
           </section>
         </div>
-
-        {/* Footer */}
-        <footer className="mt-12 border-t border-gray-200 pt-6">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-xs text-gray-600">
-              © {new Date().getFullYear()} The Daily Princetonian. All rights reserved.
-            </p>
-          </div>
-        </footer>
       </div>
     </div>
   );

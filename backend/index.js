@@ -1,3 +1,12 @@
+/**
+ * Main file for the archival system.
+ * 
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ * 
+ * @file index.js
+ */
+
 import dotenv from "dotenv";
 dotenv.config();
 

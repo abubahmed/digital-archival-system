@@ -1,9 +1,23 @@
+/**
+ * Fake data for the archival system.
+ * 
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ * 
+ * @file data.js
+ */
+
 import { generateJobId } from "./utils/jobHelpers.js";
 
 const firstJobId = generateJobId("dailyPrince", "singleDay", Date.now() - 2 * 24 * 60 * 60 * 1000)
 const secondJobId = generateJobId("newsletter", "dateRange", Date.now() - 5 * 24 * 60 * 60 * 1000)
 const thirdJobId = generateJobId("dailyPrinceIssues", "singleDay", Date.now() - 7 * 24 * 60 * 60 * 1000)
 
+/**
+ * Gets the fake jobs.
+ * 
+ * @returns {Object} The fake jobs.
+ */
 export function getFakeJobs() {
     const now = Date.now();
     return {
