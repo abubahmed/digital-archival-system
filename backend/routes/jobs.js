@@ -6,37 +6,38 @@ const router = express.Router();
 // GET /jobs - List all jobs
 router.get("/", (req, res) => {
     try {
-        const jobs = getAllJobs();
-        res.json({ jobs });
+        
+        res.status(200).json({ jobs: jobs, error: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ jobs: {}, error: error.message });
     }
 });
 
 // POST /jobs - Create/start a new archival job
 router.post("/", (req, res) => {
     try {
-        const { source, archivalType } = req.body;
+        const { config } = req.body;
+        const { source, archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams, createdAt, authToken } = config;
 
-        if (!source || !archivalType) {
-            return res.status(400).json({ error: "source and archivalType are required" });
+        const validationErrors = validateBeforeRun(archivalType, authToken, singleDayParams, dateRangeParams, urlsParams, mostRecentParams);
+        if (validationErrors) {
+            return res.status(400).json({ error: validationErrors });
         }
 
-        // Generate job ID
-        const id = `job_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        const createdAt = Date.now();
-
-        const job = createJob({
-            id,
-            createdAt,
-            config: req.body,
+        const jobId = generateJobId(source, archivalType, createdAt);
+        const createdJob = {
+            id: jobId,
             state: "running",
-            statusText: "Running...",
-        });
+            downloadUrl: null,
+            logs: [],
+            createdAt,
+            source,
+            archivalType,
+        }
 
-        res.status(201).json({ jobId: job.id });
+        res.status(201).json({ job: createdJob, error: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ job: null, error: error.message });
     }
 });
 

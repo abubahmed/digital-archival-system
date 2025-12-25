@@ -1,10 +1,7 @@
 import { db } from "../db.js";
 
-/**
- * Create a new job
- */
 export function createJob(job) {
-    const { id, createdAt, config, state = "running", statusText = "Running...", downloadUrl } = job;
+    const { id, createdAt, config, status = "running", downloadUrl } = job;
 
     db.prepare(
         `

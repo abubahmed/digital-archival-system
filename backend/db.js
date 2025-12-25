@@ -5,32 +5,24 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Database file path
 const DB_PATH = path.join(__dirname, "database.db");
 
-// Create/connect to database
 export const db = new Database(DB_PATH);
 
-// Enable foreign keys
 db.pragma("foreign_keys = ON");
 
-// Initialize schema
 export function initDatabase() {
-    // Jobs table
     db.exec(`
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
             createdAt INTEGER NOT NULL,
             source TEXT NOT NULL,
             archivalType TEXT NOT NULL,
-            state TEXT NOT NULL DEFAULT 'running',
-            statusText TEXT NOT NULL DEFAULT 'Running...',
+            status TEXT NOT NULL DEFAULT 'running',
             downloadUrl TEXT,
-            config TEXT NOT NULL
         )
     `);
 
-    // Logs table
     db.exec(`
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +34,6 @@ export function initDatabase() {
         )
     `);
 
-    // Create indexes for performance
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_logs_jobId_timestamp 
         ON logs(jobId, timestamp DESC)
@@ -54,6 +45,5 @@ export function initDatabase() {
     `);
 }
 
-// Initialize on import
 initDatabase();
 

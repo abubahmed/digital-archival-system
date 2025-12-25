@@ -4,14 +4,14 @@ export type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyP
 export type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
 
 export interface LogLine {
-  ts: number;
+  timestamp: number;
   level: LogLevel;
-  msg: string;
+  message: string;
 }
 
 export interface Job {
   id: string;
-  status: RunState;
+  state: RunState;
   downloadUrl?: string;
   logs: LogLine[];
   createdAt: number;
@@ -44,12 +44,24 @@ export interface MostRecentParams {
 }
 
 export interface ArchivalConfig {
-  singleDayParams?: SingleDayParams;
-  dateRangeParams?: DateRangeParams;
-  urlsParams?: UrlsParams;
-  mostRecentParams?: MostRecentParams;
+  typeParams: SingleDayParams | DateRangeParams | UrlsParams | MostRecentParams;
   authToken: string;
   source: Source;
   archivalType: ArchivalType;
   createdAt: number;
+}
+
+export interface getJobsResponse {
+  jobs: Jobs;
+  error?: string;
+}
+
+export interface getJobResponse {
+  job: Job;
+  error?: string;
+}
+
+export interface createJobResponse {
+  job: Job;
+  error?: string;
 }

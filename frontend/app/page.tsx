@@ -9,6 +9,7 @@ import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
 import type { Source, ArchivalType, RunState, Job, Jobs } from "../types";
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
+import type { getJobsResponse, getJobResponse, createJobResponse } from "../types";
 
 const statusTexts: Record<RunState, string> = {
   idle: "Ready.",
@@ -56,7 +57,8 @@ export default function Page() {
   const fetchAllJobs = async () => {
     try {
       const JOBS_ENDPOINT = "/jobs";
-      const jobs = await apiClient.get<Jobs>(JOBS_ENDPOINT, authToken);
+      const response = await apiClient.get<getJobsResponse>(JOBS_ENDPOINT, authToken);
+      const jobs = response.jobs;
       console.log("Fetched jobs:", jobs);
       setJobs(jobs);
       return jobs;
@@ -70,9 +72,13 @@ export default function Page() {
   const fetchSingleJob = async (jobId: string): Promise<Job | null> => {
     try {
       const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
-      const job = await apiClient.get<Job>(JOB_DETAIL_ENDPOINT, authToken);
+      const response = await apiClient.get<getJobResponse>(JOB_DETAIL_ENDPOINT, authToken);
+      const job = response.job;
       console.log("Fetched job:", job);
       setJobs((prev) => ({ ...prev, [job.id]: job }));
+      if (job.id === displayedJob?.id) {
+        setDisplayedJob(job);
+      }
       return job;
     } catch (error) {
       console.error("Error fetching job detail:", error);
@@ -103,7 +109,7 @@ export default function Page() {
 
     const checkJobStatus = async () => {
       const job = await fetchSingleJob(jobId);
-      if (job && job.status !== "running") {
+      if (job && job.state !== "running") {
         clearPollingInterval();
       }
     };
@@ -121,8 +127,8 @@ export default function Page() {
   }, [displayedJob?.logs.length]);
 
   // Displayed job
-  const isRunning = displayedJob?.status === "running";
-  const statusText = statusTexts[displayedJob?.status ?? "idle"];
+  const isRunning = displayedJob?.state === "running";
+  const statusText = statusTexts[displayedJob?.state ?? "idle"];
   const logs = displayedJob?.logs ?? [];
 
   // Window selection preview
@@ -143,7 +149,7 @@ export default function Page() {
     }
 
     try {
-      const params =
+      const typeParams =
         archivalType === "singleDay"
           ? singleDayParams
           : archivalType === "dateRange"
@@ -152,15 +158,20 @@ export default function Page() {
           ? urlsParams
           : mostRecentParams;
 
-      const response = await apiClient.post<{ jobId: string }>("/jobs", {
+      const response = await apiClient.post<createJobResponse>("/jobs", {
         source,
         archivalType,
         authToken,
-        params,
+        typeParams,
+        createdAt: Date.now(),
       });
+      const job = response.job;
+      console.log("Created job:", job);
+      if (job.id === displayedJob?.id) {
+        setDisplayedJob(job);
+      }
 
       await fetchAllJobs();
-      setDisplayedJob(jobs[response.jobId]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Failed to create archive job:", msg);
@@ -483,7 +494,7 @@ export default function Page() {
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
                   <div className="flex items-center justify-between gap-2">
                     <span>{statusText}</span>
-                    {displayedJob?.status === "success" && displayedJob?.downloadUrl && (
+                    {displayedJob?.state === "success" && displayedJob?.downloadUrl && (
                       <a
                         href={displayedJob.downloadUrl}
                         download
@@ -507,9 +518,9 @@ export default function Page() {
                     <div className="text-gray-400">No logs yet. Click "Generate Archive" to start.</div>
                   ) : (
                     logs.map((l: (typeof logs)[0], idx: number) => (
-                      <div key={`${l.ts}-${idx}`} className="whitespace-pre-wrap break-words">
-                        <span className="text-gray-400">{formatLogTs(l.ts)}</span>{" "}
-                        <span className={levelClass(l.level)}>[{l.level}]</span> {l.msg}
+                      <div key={`${l.timestamp}-${idx}`} className="whitespace-pre-wrap break-words">
+                        <span className="text-gray-400">{formatLogTs(l.timestamp)}</span>{" "}
+                        <span className={levelClass(l.level)}>[{l.level}]</span> {l.message}
                       </div>
                     ))
                   )}

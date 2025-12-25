@@ -1,5 +1,5 @@
 import { backendClient } from "../../../../utils/httpClient";
-import type { Job } from "../../../../types";
+import type { getJobResponse } from "../../../../types";
 
 // GET /api/jobs/[jobId] - Get specific job details
 export async function GET(req: Request, { params }: { params: { jobId: string } }) {
@@ -12,15 +12,16 @@ export async function GET(req: Request, { params }: { params: { jobId: string } 
 
   try {
     const { jobId } = params;
-    const job = await backendClient.get<Job>(`/jobs/${jobId}`);
-    return new Response(JSON.stringify(job), {
+    const response = await backendClient.get<getJobResponse>(`/jobs/${jobId}`);
+    const job = response.job;
+    return new Response(JSON.stringify({ job, error: null }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch job";
     const status = error instanceof Error && error.message.includes("404") ? 404 : 500;
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ job: null, error: message }), {
       status,
       headers: { "Content-Type": "application/json" },
     });
