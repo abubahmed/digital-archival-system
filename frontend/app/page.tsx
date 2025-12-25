@@ -166,10 +166,7 @@ export default function Page() {
         createdAt: Date.now(),
       });
       const job = response.job;
-      console.log("Created job:", job);
-      if (job.id === displayedJob?.id) {
-        setDisplayedJob(job);
-      }
+      setDisplayedJob(job);
 
       await fetchAllJobs();
     } catch (err: unknown) {
@@ -498,6 +495,7 @@ export default function Page() {
                       <a
                         href={displayedJob.downloadUrl}
                         download
+                        target="_blank"
                         className="text-blue-600 hover:text-blue-700 underline text-sm">
                         Download
                       </a>
