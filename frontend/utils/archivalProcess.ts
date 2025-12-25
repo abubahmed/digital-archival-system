@@ -8,19 +8,15 @@ export interface ArchivalConfig {
   source: Source;
   archivalType: ArchivalType;
   authToken: string;
-  // Date configuration
-  date?: string;
-  dateStartTime?: string;
-  dateEndTime?: string;
-  start?: string;
-  end?: string;
-  startTime?: string;
-  endTime?: string;
-  // URL configuration
-  urls?: string[];
-  // Most recent configuration
-  mostRecentCount?: number;
-  mostRecentSince?: string;
+  singleDayParams: { date: string; dateStartTime: string; dateEndTime: string };
+  dateRangeParams: {
+    start: string;
+    end: string;
+    startTime: string;
+    endTime: string;
+  };
+  urlsParams: { urls: string[] };
+  mostRecentParams: { mostRecentSince: string; mostRecentCount: number };
 }
 
 /**

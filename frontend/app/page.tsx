@@ -148,19 +148,10 @@ export default function Page() {
     [archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams]
   );
 
+  // Validate before run
   const validationError = useMemo(
-    () =>
-      validateBeforeRun(
-        archivalType,
-        singleDayParams.date,
-        dateRangeParams.start,
-        dateRangeParams.end,
-        normalizedUrls,
-        mostRecentParams.mostRecentSince,
-        mostRecentParams.mostRecentCount,
-        authToken
-      ),
-    [archivalType, singleDayParams, dateRangeParams, normalizedUrls, mostRecentParams, authToken]
+    () => validateBeforeRun(archivalType, authToken, singleDayParams, dateRangeParams, urlsParams, mostRecentParams),
+    [archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams, authToken]
   );
 
   async function generateArchive() {
@@ -235,15 +226,6 @@ export default function Page() {
                   autoComplete="off"
                   required
                 />
-                <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={rememberAuth}
-                    onChange={(e) => setRememberAuth(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  Remember token in this browser (localStorage)
-                </label>
               </div>
 
               {/* Source Selection */}
@@ -322,8 +304,8 @@ export default function Page() {
                         id="date"
                         type="date"
                         className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
+                        value={singleDayParams.date}
+                        onChange={(e) => setSingleDayParams((prev) => ({ ...prev, date: e.target.value }))}
                         max={todayStr}
                         required
                       />
@@ -337,8 +319,8 @@ export default function Page() {
                           id="dateStartTime"
                           type="time"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={dateStartTime}
-                          onChange={(e) => setDateStartTime(e.target.value)}
+                          value={singleDayParams.dateStartTime}
+                          onChange={(e) => setSingleDayParams((prev) => ({ ...prev, dateStartTime: e.target.value }))}
                         />
                       </div>
                       <div>
@@ -349,8 +331,8 @@ export default function Page() {
                           id="dateEndTime"
                           type="time"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={dateEndTime}
-                          onChange={(e) => setDateEndTime(e.target.value)}
+                          value={singleDayParams.dateEndTime}
+                          onChange={(e) => setSingleDayParams((prev) => ({ ...prev, dateEndTime: e.target.value }))}
                         />
                       </div>
                     </div>
@@ -368,9 +350,9 @@ export default function Page() {
                           id="start"
                           type="date"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={start}
-                          onChange={(e) => setStart(e.target.value)}
-                          max={end || todayStr}
+                          value={dateRangeParams.start}
+                          onChange={(e) => setDateRangeParams((prev) => ({ ...prev, start: e.target.value }))}
+                          max={dateRangeParams.end || todayStr}
                           required
                         />
                       </div>
@@ -382,9 +364,9 @@ export default function Page() {
                           id="end"
                           type="date"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={end}
-                          onChange={(e) => setEnd(e.target.value)}
-                          min={start}
+                          value={dateRangeParams.end}
+                          onChange={(e) => setDateRangeParams((prev) => ({ ...prev, end: e.target.value }))}
+                          min={dateRangeParams.start}
                           max={todayStr}
                           required
                         />
@@ -399,8 +381,8 @@ export default function Page() {
                           id="startTime"
                           type="time"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
+                          value={dateRangeParams.startTime}
+                          onChange={(e) => setDateRangeParams((prev) => ({ ...prev, startTime: e.target.value }))}
                         />
                       </div>
                       <div>
@@ -411,8 +393,8 @@ export default function Page() {
                           id="endTime"
                           type="time"
                           className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
+                          value={dateRangeParams.endTime}
+                          onChange={(e) => setDateRangeParams((prev) => ({ ...prev, endTime: e.target.value }))}
                         />
                       </div>
                     </div>
@@ -448,7 +430,7 @@ export default function Page() {
                         min={1}
                         step={1}
                         className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={mostRecentParams.mostRecentCount}
+                        value={mostRecentParams.mostRecentCount.toString()}
                         onChange={(e) =>
                           setMostRecentParams((prev) => ({
                             ...prev,

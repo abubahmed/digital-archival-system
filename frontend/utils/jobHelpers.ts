@@ -1,4 +1,4 @@
-import type { Source, ArchivalType } from "../types";
+import type { Source, ArchivalType } from "../app/page";
 
 /**
  * Generates a random string of specified length using alphanumeric characters

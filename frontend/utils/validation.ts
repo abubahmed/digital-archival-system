@@ -78,7 +78,7 @@ export function validateBeforeRun(
   }
 ) {
   if (!archivalType) return "Archival type is required.";
-  if (!authToken) return "Authentication token is required.";
+  if (!authToken) return "API Key is required.";
 
   switch (archivalType) {
     case "singleDay":
