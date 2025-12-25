@@ -1,5 +1,20 @@
+/**
+ * HTTP client.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file httpClient.ts
+ */
+
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || "";
 
+/**
+ * HTTP client class.
+ *
+ * @class HttpClient
+ * @param {string} baseURL - The base URL.
+ */
 class HttpClient {
   private baseURL: string;
 
@@ -10,11 +25,13 @@ class HttpClient {
     this.baseURL = baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL;
   }
 
+  // Build URL
   private buildURL(endpoint: string): string {
     const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     return `${this.baseURL}${cleanEndpoint}`;
   }
 
+  // Build headers
   private buildHeaders(authToken?: string): HeadersInit {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -27,6 +44,7 @@ class HttpClient {
     return headers;
   }
 
+  // Handle error
   private async handleError(response: Response): Promise<never> {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     try {
@@ -42,6 +60,7 @@ class HttpClient {
     throw new Error(errorMessage);
   }
 
+  // Get
   async get<T>(endpoint: string, authToken?: string): Promise<T> {
     const url = this.buildURL(endpoint);
     const response = await fetch(url, {
@@ -56,6 +75,7 @@ class HttpClient {
     return response.json();
   }
 
+  // Post
   async post<T>(endpoint: string, body: unknown, authToken?: string): Promise<T> {
     const url = this.buildURL(endpoint);
     const response = await fetch(url, {

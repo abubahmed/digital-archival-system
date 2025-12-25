@@ -1,7 +1,23 @@
+/**
+ * Get specific job details.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file route.ts
+ */
+
 import { backendClient } from "../../../../utils/httpClient";
 import type { getJobResponse } from "../../../../types";
 
-// GET /api/jobs/[jobId] - Get specific job details
+/**
+ * GET /api/jobs/[jobId] - Get specific job details
+ *
+ * @param {Request} req - The request object.
+ * @param {Promise<{ jobId: string }>} params - The parameters object.
+ *
+ * @returns {Response} The response object.
+ */
 export async function GET(req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   if (!backendClient) {
     return new Response(JSON.stringify({ error: "Backend API not configured" }), {

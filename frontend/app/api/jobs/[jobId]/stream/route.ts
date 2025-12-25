@@ -1,7 +1,22 @@
-// GET /api/jobs/[jobId]/stream - Proxy SSE stream for job updates
+/**
+ * Proxy SSE stream for job updates.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file route.ts
+ */
+
+/**
+ * GET /api/jobs/[jobId]/stream - Proxy SSE stream for job updates
+ *
+ * @param {Request} req - The request object.
+ * @param {Promise<{ jobId: string }>} params - The parameters object.
+ *
+ * @returns {Response} The response object.
+ */
 export async function GET(req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
-
   if (!BACKEND_API_URL) {
     return new Response("Backend API not configured", { status: 503 });
   }
@@ -9,7 +24,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
   try {
     const { jobId } = await params;
     const backendUrl = `${BACKEND_API_URL}/jobs/${jobId}/stream`;
-
     const backendResponse = await fetch(backendUrl, {
       method: "GET",
       headers: {
@@ -24,6 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
       });
     }
 
+    // Create a new readable stream.
     const stream = new ReadableStream({
       async start(controller) {
         const reader = backendResponse.body?.getReader();
@@ -40,6 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
           controller.close();
         });
 
+        // Read the stream and enqueue the chunks.
         try {
           while (true) {
             const { done, value } = await reader.read();

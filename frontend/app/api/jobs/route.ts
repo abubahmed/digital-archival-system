@@ -1,8 +1,23 @@
+/**
+ * Get all jobs.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file route.ts
+ */
+
 import { backendClient } from "../../../utils/httpClient";
 import type { Jobs, Job, ArchivalConfig, createJobResponse } from "../../../types";
 import type { getJobsResponse } from "../../../types";
 
-// GET /api/jobs - List all jobs
+/**
+ * GET /api/jobs - List all jobs
+ *
+ * @param {Request} req - The request object.
+ *
+ * @returns {Response} The response object.
+ */
 export async function GET(req: Request) {
   if (!backendClient) {
     return new Response(JSON.stringify({ error: "Backend API not configured" }), {
@@ -27,7 +42,13 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/jobs - Create/start a new archival job
+/**
+ * POST /api/jobs - Create/start a new archival job
+ *
+ * @param {Request} req - The request object.
+ *
+ * @returns {Response} The response object.
+ */
 export async function POST(req: Request) {
   if (!backendClient) {
     return new Response(JSON.stringify({ error: "Backend API not configured" }), {

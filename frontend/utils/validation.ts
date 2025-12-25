@@ -1,6 +1,22 @@
+/**
+ * Validation helpers.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file validation.ts
+ */
+
 import { isValidYmd, parseEstDatetimeInput } from "./dateHelpers";
 import type { ArchivalConfig, DateRangeParams, SingleDayParams, UrlsParams, MostRecentParams } from "../types";
 
+/**
+ * Validates single day parameters.
+ *
+ * @param {SingleDayParams} singleDayParams - The single day parameters.
+ *
+ * @returns {string | null} The error message or null if the parameters are valid.
+ */
 function validateSingleDayParams(singleDayParams: {
   date: string;
   dateStartTime: string;
@@ -12,6 +28,13 @@ function validateSingleDayParams(singleDayParams: {
   return null;
 }
 
+/**
+ * Validates date range parameters.
+ *
+ * @param {DateRangeParams} dateRangeParams - The date range parameters.
+ *
+ * @returns {string | null} The error message or null if the parameters are valid.
+ */
 function validateDateRangeParams(dateRangeParams: {
   start: string;
   end: string;
@@ -27,6 +50,13 @@ function validateDateRangeParams(dateRangeParams: {
   return null;
 }
 
+/**
+ * Validates URLs parameters.
+ *
+ * @param {UrlsParams} urlsParams - The URLs parameters.
+ *
+ * @returns {string | null} The error message or null if the parameters are valid.
+ */
 function validateUrlsParams(urlsParams: { urls: string[] }): string | null {
   if (urlsParams.urls.length === 0) {
     return "URL list selected, but no URLs were provided.";
@@ -34,6 +64,13 @@ function validateUrlsParams(urlsParams: { urls: string[] }): string | null {
   return null;
 }
 
+/**
+ * Validates most recent parameters.
+ *
+ * @param {MostRecentParams} mostRecentParams - The most recent parameters.
+ *
+ * @returns {string | null} The error message or null if the parameters are valid.
+ */
 function validateMostRecentParams(mostRecentParams: {
   mostRecentSince: string;
   mostRecentCount: number;
@@ -55,6 +92,13 @@ function validateMostRecentParams(mostRecentParams: {
   return null;
 }
 
+/**
+ * Validates before run.
+ *
+ * @param {ArchivalConfig} archivalConfig - The archival configuration.
+ *
+ * @returns {string | null} The error message or null if the parameters are valid.
+ */
 export function validateBeforeRun(archivalConfig: ArchivalConfig) {
   if (!archivalConfig.archivalType) return "Archival type is required.";
   if (!archivalConfig.authToken) return "API Key is required.";

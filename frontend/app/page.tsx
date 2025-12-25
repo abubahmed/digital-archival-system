@@ -1,6 +1,15 @@
+/**
+ * Main page for the archival system.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file page.tsx
+ */
+
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RadioCard from "../components/RadioCard";
 import { getTodayStr, getInitialMostRecentSince, getWindowPreview } from "../utils/dateHelpers";
 import { formatLogTs, levelClass } from "../utils/logHelpers";
@@ -9,11 +18,16 @@ import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
 import type { Source, ArchivalType, RunState, Job, Jobs, ArchivalConfig } from "../types";
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
-import type { getJobsResponse, getJobResponse, createJobResponse } from "../types";
+import type { getJobsResponse, createJobResponse } from "../types";
 
 const REMEMBER_AUTH_TOKEN_KEY = "rememberAuthToken";
 const AUTH_TOKEN_KEY = "authToken";
 
+/**
+ * Main page for the archival system.
+ *
+ * @returns {React.ReactNode} The main page.
+ */
 export default function Page() {
   // Core configuration
   const [source, setSource] = useState<Source>("dailyPrince");
@@ -40,14 +54,17 @@ export default function Page() {
     mostRecentSince: getInitialMostRecentSince(),
   });
 
+  // Auth params
   const [authToken, setAuthToken] = useState<string>("");
   const [saveAuthToken, setSaveAuthToken] = useState<boolean>(false);
 
+  // Jobs state
   const [jobs, setJobs] = useState<Jobs>({});
   const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
 
+  // Load auth token from localStorage
   useEffect(() => {
     const saveAuthToken = localStorage.getItem(REMEMBER_AUTH_TOKEN_KEY);
     if (saveAuthToken === "true") {
@@ -59,6 +76,7 @@ export default function Page() {
     }
   }, []);
 
+  // Save auth token to localStorage
   useEffect(() => {
     if (saveAuthToken) {
       localStorage.setItem(REMEMBER_AUTH_TOKEN_KEY, "true");
@@ -70,6 +88,11 @@ export default function Page() {
   }, [saveAuthToken, authToken]);
 
   // Fetches the list of all jobs from the API and sets the jobs state.
+  /**
+   * Fetches the list of all jobs from the API and sets the jobs state.
+   *
+   * @returns {Promise<Jobs>} The list of jobs.
+   */
   const fetchAllJobs = async () => {
     try {
       const JOBS_ENDPOINT = "/jobs";
@@ -84,15 +107,21 @@ export default function Page() {
     }
   };
 
+  // Fetch all jobs on mount
   useEffect(() => {
     fetchAllJobs();
   }, []);
 
-  // Server-Sent Events for job updates
+  /**
+   * Server-Sent Events for job updates
+   *
+   * @param {Job} displayedJob - The displayed job.
+   */
   useEffect(() => {
     const jobId = displayedJob?.jobId;
     const jobState = displayedJob?.state;
 
+    // Close event source if no job is selected
     if (!jobId) {
       if (eventSourceRef.current) {
         console.log("Closing event source for no job");
@@ -102,6 +131,7 @@ export default function Page() {
       return;
     }
 
+    // Close event source if job is not running
     if (jobState !== "running") {
       if (eventSourceRef.current) {
         console.log("Closing event source for non-running job");
@@ -111,15 +141,18 @@ export default function Page() {
       return;
     }
 
+    // Close existing event source
     if (eventSourceRef.current) {
       console.log("Closing existing event source");
       eventSourceRef.current.close();
     }
 
+    // Create new event source for job
     console.log("Creating new event source for job", jobId);
     const eventSource = new EventSource(`/api/jobs/${jobId}/stream`);
     eventSourceRef.current = eventSource;
 
+    // Handle message from event source
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -138,12 +171,14 @@ export default function Page() {
       }
     };
 
+    // Handle error from event source
     eventSource.onerror = (error) => {
       console.error("EventSource error:", error);
       eventSource.close();
       eventSourceRef.current = null;
     };
 
+    // Close event source on unmount
     return () => {
       console.log("Closing event source");
       eventSource.close();
@@ -158,7 +193,7 @@ export default function Page() {
     element.scrollTop = element.scrollHeight;
   }, [displayedJob?.logs.length]);
 
-  // Displayed job
+  // Displayed job logs and status
   const logs = displayedJob?.logs ?? [];
   const statusTexts: Record<RunState, string> = {
     idle: "Ready.",
@@ -168,6 +203,7 @@ export default function Page() {
   };
   const statusText = statusTexts[displayedJob?.state ?? "idle"];
 
+  // Archival configuration
   const archivalConfig = useMemo(() => {
     const typeParams =
       archivalType === "singleDay"
@@ -191,17 +227,19 @@ export default function Page() {
     return validateBeforeRun(archivalConfig);
   }, [archivalConfig]);
 
+  // Start the archival process when the generate button is clicked
   async function generateArchive() {
     if (validationError) {
       return;
     }
+
+    // Create the new job
     try {
       const response = await apiClient.post<createJobResponse>("/jobs", {
         ...archivalConfig,
       });
       const job = response.job;
       setDisplayedJob(job);
-
       await fetchAllJobs();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -210,9 +248,51 @@ export default function Page() {
     }
   }
 
+  /**
+   * Job card component
+   *
+   * @param {Job} job - The job.
+   *
+   * @returns {React.ReactNode} The job card.
+   */
+  const JobCard = ({ job }: { job: Job }) => {
+    const isOpen = displayedJob?.jobId === job.jobId;
+    return (
+      <div
+        key={job.jobId}
+        className="rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900">{job.jobId}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isOpen ? (
+              <button
+                type="button"
+                disabled
+                className="rounded-lg bg-gray-400 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed opacity-60 whitespace-nowrap">
+                Open
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setDisplayedJob(job);
+                }}
+                className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
+                Open
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-white via-gray-50 to-gray-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        {/* Header */}
         <header className="border-gray-200 pb-8">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Prince Archival</h1>
@@ -325,6 +405,7 @@ export default function Page() {
                   <div className="text-sm font-medium text-gray-900">Selection details</div>
                 </div>
 
+                {/* Single Day */}
                 {archivalType === "singleDay" && (
                   <div className="space-y-4">
                     <div>
@@ -370,6 +451,7 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* Date Range */}
                 {archivalType === "dateRange" && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -432,6 +514,7 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* Certain URLs */}
                 {archivalType === "urls" && (
                   <div>
                     <div className="mb-2">
@@ -449,6 +532,7 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* Most recent items */}
                 {archivalType === "mostRecent" && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
@@ -490,6 +574,7 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* Window preview */}
                 {windowPreview && (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 transition-colors">
                     <div className="text-sm font-medium text-gray-700">{windowPreview.headline}</div>
@@ -498,7 +583,7 @@ export default function Page() {
                 )}
               </div>
 
-              {/* Generate Button */}
+              {/* Generate archive button */}
               <div>
                 <button
                   type="button"
@@ -568,6 +653,7 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* All jobs */}
               <div>
                 <div className="mb-2 text-sm font-medium text-gray-900">All Jobs</div>
                 {Object.keys(jobs).length === 0 ? (
@@ -576,39 +662,9 @@ export default function Page() {
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
-                    {Object.values(jobs).map((job: Job) => {
-                      const isOpen = displayedJob?.jobId === job.jobId;
-                      return (
-                        <div
-                          key={job.jobId}
-                          className="rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900">{job.jobId}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {isOpen ? (
-                                <button
-                                  type="button"
-                                  disabled
-                                  className="rounded-lg bg-gray-400 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed opacity-60 whitespace-nowrap">
-                                  Open
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setDisplayedJob(job);
-                                  }}
-                                  className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
-                                  Open
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {Object.values(jobs).map((job: Job) => (
+                      <JobCard key={job.jobId} job={job} />
+                    ))}
                   </div>
                 )}
               </div>

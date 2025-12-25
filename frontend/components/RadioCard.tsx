@@ -1,3 +1,12 @@
+/**
+ * Radio card component.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file RadioCard.tsx
+ */
+
 interface RadioCardProps {
   name: string;
   value: string;
@@ -7,6 +16,13 @@ interface RadioCardProps {
   subtitle: string;
 }
 
+/**
+ * Radio card component.
+ *
+ * @param {RadioCardProps} props - The props.
+ *
+ * @returns {React.ReactNode} The radio card.
+ */
 export default function RadioCard({ name, value, checked, onChange, title, subtitle }: RadioCardProps) {
   return (
     <label

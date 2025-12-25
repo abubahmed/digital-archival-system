@@ -1,9 +1,32 @@
+/**
+ * Date helpers.
+ *
+ * Digital Archival System - The Daily Princetonian
+ * Copyright © 2024-2025 The Daily Princetonian. All rights reserved.
+ *
+ * @file dateHelpers.ts
+ */
+
 import { ArchivalConfig, DateRangeParams, MostRecentParams, SingleDayParams, UrlsParams } from "@/types";
 
+/**
+ * Checks if a string is a valid YYYY-MM-DD date.
+ *
+ * @param {string} s - The string to check.
+ *
+ * @returns {boolean} True if the string is a valid YYYY-MM-DD date, false otherwise.
+ */
 export function isValidYmd(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
+/**
+ * Converts a date to a EST datetime input string.
+ *
+ * @param {Date} d - The date to convert.
+ *
+ * @returns {string} The EST datetime input string.
+ */
 export function dateToEstDatetimeInput(d: Date): string {
   const estDate = new Date(d.getTime() - 5 * 60 * 60 * 1000);
   const yyyy = estDate.getUTCFullYear();
@@ -14,10 +37,25 @@ export function dateToEstDatetimeInput(d: Date): string {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
 
+/**
+ * Parses a EST datetime input string to a date.
+ *
+ * @param {string} datetimeStr - The EST datetime input string.
+ *
+ * @returns {Date} The date.
+ */
 export function parseEstDatetimeInput(datetimeStr: string): Date {
   return new Date(datetimeStr + ":00-05:00");
 }
 
+/**
+ * Converts a EST datetime string to a UTC date.
+ *
+ * @param {string} dateStr - The EST date string.
+ * @param {string} timeStr - The EST time string.
+ *
+ * @returns {Date} The UTC date.
+ */
 function estToUtc(dateStr: string, timeStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
   const timeParts = timeStr.split(":");
@@ -33,6 +71,13 @@ function estToUtc(dateStr: string, timeStr: string): Date {
   return utcDate;
 }
 
+/**
+ * Formats a date as a EST datetime string.
+ *
+ * @param {Date} d - The date to format.
+ *
+ * @returns {string} The formatted EST datetime string.
+ */
 export function formatEst(d: Date): string {
   const estDate = new Date(d.getTime() - 5 * 60 * 60 * 1000);
   const yyyy = estDate.getUTCFullYear();
@@ -44,6 +89,15 @@ export function formatEst(d: Date): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }
 
+/**
+ * Computes a single day window.
+ *
+ * @param {string} dateStr - The date string.
+ * @param {string} startTime - The start time string.
+ * @param {string} endTime - The end time string.
+ *
+ * @returns {Date} The computed window.
+ */
 export function computeWindowSingleDay(
   dateStr: string,
   startTime: string,
@@ -60,6 +114,16 @@ export function computeWindowSingleDay(
   return { start, end };
 }
 
+/**
+ * Computes a date range window.
+ *
+ * @param {string} startStr - The start date string.
+ * @param {string} endStr - The end date string.
+ * @param {string} startTime - The start time string.
+ * @param {string} endTime - The end time string.
+ *
+ * @returns {Date} The computed window.
+ */
 export function computeWindowRange(
   startStr: string,
   endStr: string,
@@ -77,6 +141,14 @@ export function computeWindowRange(
   return { start, end };
 }
 
+/**
+ * Formats a window preview.
+ *
+ * @param {Date} start - The start date.
+ * @param {Date} end - The end date.
+ *
+ * @returns {WindowPreview} The formatted window preview.
+ */
 export function formatWindowPreview(start: Date, end: Date): WindowPreview {
   return {
     headline: "Computed window (EST)",
@@ -84,6 +156,11 @@ export function formatWindowPreview(start: Date, end: Date): WindowPreview {
   };
 }
 
+/**
+ * Gets the today's date string.
+ *
+ * @returns {string} The today's date string.
+ */
 export function getTodayStr(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -92,6 +169,11 @@ export function getTodayStr(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/**
+ * Gets the initial most recent since.
+ *
+ * @returns {string} The initial most recent since.
+ */
 export function getInitialMostRecentSince(): string {
   return dateToEstDatetimeInput(new Date());
 }
@@ -101,9 +183,17 @@ export interface WindowPreview {
   body: string;
 }
 
+/**
+ * Gets a window preview.
+ *
+ * @param {ArchivalConfig} archivalConfig - The archival configuration.
+ *
+ * @returns {WindowPreview} The window preview.
+ */
 export function getWindowPreview(archivalConfig: ArchivalConfig): WindowPreview | null {
   const { archivalType } = archivalConfig;
-  
+
+  // Create selection window if archival type is single day
   if (archivalConfig.archivalType === "singleDay") {
     const singleDayParams = archivalConfig.typeParams as SingleDayParams;
     if (!singleDayParams.date) return null;
@@ -115,6 +205,7 @@ export function getWindowPreview(archivalConfig: ArchivalConfig): WindowPreview 
     return window ? formatWindowPreview(window.start, window.end) : null;
   }
 
+  // Create selection window if archival type is date range
   if (archivalType === "dateRange") {
     const dateRangeParams = archivalConfig.typeParams as DateRangeParams;
     if (!dateRangeParams.start || !dateRangeParams.end) return null;
@@ -127,6 +218,7 @@ export function getWindowPreview(archivalConfig: ArchivalConfig): WindowPreview 
     return window ? formatWindowPreview(window.start, window.end) : null;
   }
 
+  // Create selection window if archival type is most recent
   if (archivalType === "mostRecent") {
     const mostRecentParams = archivalConfig.typeParams as MostRecentParams;
     if (!mostRecentParams.mostRecentSince) return null;
@@ -138,6 +230,7 @@ export function getWindowPreview(archivalConfig: ArchivalConfig): WindowPreview 
     };
   }
 
+  // Create selection window if archival type is URLs
   if (archivalType === "urls") {
     const urlsParams = archivalConfig.typeParams as UrlsParams;
     if (!urlsParams.urls) return null;
