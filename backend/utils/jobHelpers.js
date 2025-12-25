@@ -1,4 +1,4 @@
-function generateRandomString(length) {
+export function generateRandomString(length) {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let result = "";
     for (let i = 0; i < length; i++) {
@@ -7,7 +7,7 @@ function generateRandomString(length) {
     return result;
 }
 
-function formatTimestamp(timestamp = Date.now()) {
+export function formatTimestamp(timestamp = Date.now()) {
     const d = new Date(timestamp);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");

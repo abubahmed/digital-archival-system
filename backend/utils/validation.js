@@ -55,23 +55,20 @@ function validateMostRecentParams(mostRecentParams) {
 export function validateBeforeRun(
     archivalType,
     authToken,
-    singleDayParams,
-    dateRangeParams,
-    urlsParams,
-    mostRecentParams
+    typeParams
 ) {
     if (!archivalType) return "Archival type is required.";
     if (!authToken) return "API Key is required.";
 
     switch (archivalType) {
         case "singleDay":
-            return validateSingleDayParams(singleDayParams);
+            return validateSingleDayParams(typeParams);
         case "dateRange":
-            return validateDateRangeParams(dateRangeParams);
+            return validateDateRangeParams(typeParams);
         case "urls":
-            return validateUrlsParams(urlsParams);
+            return validateUrlsParams(typeParams);
         case "mostRecent": {
-            return validateMostRecentParams(mostRecentParams);
+            return validateMostRecentParams(typeParams);
         }
     }
 }

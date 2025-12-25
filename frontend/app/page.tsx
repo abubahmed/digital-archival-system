@@ -7,16 +7,9 @@ import { formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
 import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
-import type { Source, ArchivalType, RunState, Job, Jobs } from "../types";
+import type { Source, ArchivalType, RunState, Job, Jobs, ArchivalConfig } from "../types";
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
 import type { getJobsResponse, getJobResponse, createJobResponse } from "../types";
-
-const statusTexts: Record<RunState, string> = {
-  idle: "Ready.",
-  running: "Running...",
-  success: "Done.",
-  error: "Failed.",
-};
 
 export default function Page() {
   // Core configuration
@@ -44,13 +37,11 @@ export default function Page() {
     mostRecentSince: getInitialMostRecentSince(),
   });
 
-  // Auth
+  // Auth and jobs
   const [authToken, setAuthToken] = useState<string>("");
-
-  // Jobs
   const [jobs, setJobs] = useState<Jobs>({});
   const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
 
   // Fetches the list of all jobs from the API and sets the jobs state.
@@ -75,8 +66,9 @@ export default function Page() {
       const response = await apiClient.get<getJobResponse>(JOB_DETAIL_ENDPOINT, authToken);
       const job = response.job;
       console.log("Fetched job:", job);
-      setJobs((prev) => ({ ...prev, [job.id]: job }));
-      if (job.id === displayedJob?.id) {
+
+      setJobs((prev) => ({ ...prev, [job.jobId]: job }));
+      if (job.jobId === displayedJob?.jobId) {
         setDisplayedJob(job);
       }
       return job;
@@ -86,38 +78,67 @@ export default function Page() {
     }
   };
 
-  // Fetch all jobs
   useEffect(() => {
     fetchAllJobs();
   }, []);
 
-  const clearPollingInterval = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
-
-  // Poll job status
+  // Server-Sent Events for job updates
   useEffect(() => {
-    const jobId = displayedJob?.id;
+    const jobId = displayedJob?.jobId;
+    const jobState = displayedJob?.state;
+
     if (!jobId) {
-      clearPollingInterval();
-      setDisplayedJob(null);
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
       return;
     }
 
-    const checkJobStatus = async () => {
-      const job = await fetchSingleJob(jobId);
-      if (job && job.state !== "running") {
-        clearPollingInterval();
+    if (jobState !== "running") {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      return;
+    }
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const eventSource = new EventSource(`/api/jobs/${jobId}/stream`);
+    eventSourceRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.job) {
+          const updatedJob: Job = data.job;
+          setJobs((prev) => ({ ...prev, [updatedJob.jobId]: updatedJob }));
+          if (updatedJob.jobId === displayedJob?.jobId) {
+            setDisplayedJob(updatedJob);
+          }
+        } else if (data.error) {
+          console.error("SSE error:", data.error);
+          eventSource.close();
+        }
+      } catch (error) {
+        console.error("Failed to parse SSE message:", error);
       }
     };
 
-    const CHECK_JOB_STATUS_INTERVAL = 2000;
-    pollingIntervalRef.current = setInterval(checkJobStatus, CHECK_JOB_STATUS_INTERVAL);
-    return clearPollingInterval;
-  }, [displayedJob?.id, fetchSingleJob]);
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+
+    return () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  }, [displayedJob?.jobId, displayedJob?.state]);
 
   // Scroll to bottom of log viewport
   useEffect(() => {
@@ -127,43 +148,45 @@ export default function Page() {
   }, [displayedJob?.logs.length]);
 
   // Displayed job
-  const isRunning = displayedJob?.state === "running";
-  const statusText = statusTexts[displayedJob?.state ?? "idle"];
   const logs = displayedJob?.logs ?? [];
+  const statusTexts: Record<RunState, string> = {
+    idle: "Ready.",
+    running: "Running...",
+    success: "Done.",
+    error: "Failed.",
+  };
+  const statusText = statusTexts[displayedJob?.state ?? "idle"];
+
+  const archivalConfig = useMemo(() => {
+    const typeParams =
+      archivalType === "singleDay"
+        ? singleDayParams
+        : archivalType === "dateRange"
+        ? dateRangeParams
+        : archivalType === "urls"
+        ? urlsParams
+        : mostRecentParams;
+
+    return { source, archivalType, authToken, typeParams } as ArchivalConfig;
+  }, [source, archivalType, authToken, singleDayParams, dateRangeParams, urlsParams, mostRecentParams]);
 
   // Window selection preview
-  const windowPreview = useMemo(
-    () => getWindowPreview(archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams),
-    [archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams]
-  );
+  const windowPreview = useMemo(() => {
+    return getWindowPreview(archivalConfig);
+  }, [archivalConfig]);
 
   // Validate before run
-  const validationError = useMemo(
-    () => validateBeforeRun(archivalType, authToken, singleDayParams, dateRangeParams, urlsParams, mostRecentParams),
-    [archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams, authToken]
-  );
+  const validationError = useMemo(() => {
+    return validateBeforeRun(archivalConfig);
+  }, [archivalConfig]);
 
   async function generateArchive() {
     if (validationError) {
       return;
     }
-
     try {
-      const typeParams =
-        archivalType === "singleDay"
-          ? singleDayParams
-          : archivalType === "dateRange"
-          ? dateRangeParams
-          : archivalType === "urls"
-          ? urlsParams
-          : mostRecentParams;
-
       const response = await apiClient.post<createJobResponse>("/jobs", {
-        source,
-        archivalType,
-        authToken,
-        typeParams,
-        createdAt: Date.now(),
+        ...archivalConfig,
       });
       const job = response.job;
       setDisplayedJob(job);
@@ -460,11 +483,11 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={generateArchive}
-                  disabled={isRunning || !!validationError}
+                  disabled={!!validationError}
                   className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50">
-                  {isRunning ? "Generating..." : "Generate Archive"}
+                  Generate Archive
                 </button>
-                {validationError && !isRunning && <p className="mt-2 text-xs text-red-600">{validationError}</p>}
+                {validationError && <p className="mt-2 text-xs text-red-600">{validationError}</p>}
               </div>
             </div>
           </section>
@@ -475,9 +498,9 @@ export default function Page() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Run Status</h2>
-                  {displayedJob?.id && (
+                  {displayedJob?.jobId && (
                     <div className="mt-1">
-                      <span className="text-xs text-gray-600">{displayedJob.id}</span>
+                      <span className="text-xs text-gray-600">{displayedJob.jobId}</span>
                     </div>
                   )}
                 </div>
@@ -534,14 +557,14 @@ export default function Page() {
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
                     {Object.values(jobs).map((job: Job) => {
-                      const isOpen = displayedJob?.id === job.id;
+                      const isOpen = displayedJob?.jobId === job.jobId;
                       return (
                         <div
-                          key={job.id}
+                          key={job.jobId}
                           className="rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900">{job.id}</div>
+                              <div className="text-sm font-medium text-gray-900">{job.jobId}</div>
                             </div>
                             <div className="flex items-center gap-2">
                               {isOpen ? (

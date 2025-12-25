@@ -1,5 +1,5 @@
 import { isValidYmd, parseEstDatetimeInput } from "./dateHelpers";
-import type { ArchivalType } from "../types";
+import type { ArchivalConfig, DateRangeParams, SingleDayParams, UrlsParams, MostRecentParams } from "../types";
 
 function validateSingleDayParams(singleDayParams: {
   date: string;
@@ -55,40 +55,19 @@ function validateMostRecentParams(mostRecentParams: {
   return null;
 }
 
-export function validateBeforeRun(
-  archivalType: ArchivalType,
-  authToken: string,
-  singleDayParams: {
-    date: string;
-    dateStartTime: string;
-    dateEndTime: string;
-  },
-  dateRangeParams: {
-    start: string;
-    end: string;
-    startTime: string;
-    endTime: string;
-  },
-  urlsParams: {
-    urls: string[];
-  },
-  mostRecentParams: {
-    mostRecentSince: string;
-    mostRecentCount: number;
-  }
-) {
-  if (!archivalType) return "Archival type is required.";
-  if (!authToken) return "API Key is required.";
+export function validateBeforeRun(archivalConfig: ArchivalConfig) {
+  if (!archivalConfig.archivalType) return "Archival type is required.";
+  if (!archivalConfig.authToken) return "API Key is required.";
 
-  switch (archivalType) {
+  switch (archivalConfig.archivalType) {
     case "singleDay":
-      return validateSingleDayParams(singleDayParams);
+      return validateSingleDayParams(archivalConfig.typeParams as SingleDayParams);
     case "dateRange":
-      return validateDateRangeParams(dateRangeParams);
+      return validateDateRangeParams(archivalConfig.typeParams as DateRangeParams);
     case "urls":
-      return validateUrlsParams(urlsParams);
+      return validateUrlsParams(archivalConfig.typeParams as UrlsParams);
     case "mostRecent": {
-      return validateMostRecentParams(mostRecentParams);
+      return validateMostRecentParams(archivalConfig.typeParams as MostRecentParams);
     }
   }
 }

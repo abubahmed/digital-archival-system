@@ -10,7 +10,7 @@ export interface LogLine {
 }
 
 export interface Job {
-  id: string;
+  jobId: string;
   state: RunState;
   downloadUrl?: string;
   logs: LogLine[];
@@ -48,7 +48,6 @@ export interface ArchivalConfig {
   authToken: string;
   source: Source;
   archivalType: ArchivalType;
-  createdAt: number;
 }
 
 export interface getJobsResponse {

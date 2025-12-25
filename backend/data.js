@@ -1,21 +1,19 @@
-import { generateJobId } from "./utils/jobHelpers";
+import { generateJobId } from "./utils/jobHelpers.js";
 
-const firstJobId = generateJobId("dailyPrince", "singleDay", Date.now() - 2 * 24 * 60 * 60 * 1000);
-const secondJobId = generateJobId("newsletter", "dateRange", Date.now() - 5 * 24 * 60 * 60 * 1000);
-const thirdJobId = generateJobId("dailyPrinceIssues", "singleDay", Date.now() - 7 * 24 * 60 * 60 * 1000);
-const fourthJobId = generateJobId("instagram", "mostRecent", Date.now() - 10 * 24 * 60 * 60 * 1000);
-const fifthJobId = generateJobId("twitter", "urls", Date.now() - 14 * 24 * 60 * 60 * 1000);
+const firstJobId = generateJobId("dailyPrince", "singleDay", Date.now() - 2 * 24 * 60 * 60 * 1000)
+const secondJobId = generateJobId("newsletter", "dateRange", Date.now() - 5 * 24 * 60 * 60 * 1000)
+const thirdJobId = generateJobId("dailyPrinceIssues", "singleDay", Date.now() - 7 * 24 * 60 * 60 * 1000)
 
 export function getFakeJobs() {
     const now = Date.now();
     return {
         [firstJobId]: {
-            id: firstJobId,
+            jobId: firstJobId,
             createdAt: now - 2 * 24 * 60 * 60 * 1000,
             source: "dailyPrince",
             archivalType: "singleDay",
             downloadUrl: "https://google.com",
-            state: "success",
+            state: "running",
             logs: [
                 { timestamp: now - 2 * 24 * 60 * 60 * 1000, level: "info", message: "Archive job configured." },
                 {
@@ -30,7 +28,7 @@ export function getFakeJobs() {
             ],
         },
         [secondJobId]: {
-            id: secondJobId,
+            jobId: secondJobId,
             createdAt: now - 5 * 24 * 60 * 60 * 1000,
             source: "newsletter",
             archivalType: "dateRange",
@@ -51,7 +49,7 @@ export function getFakeJobs() {
             ],
         },
         [thirdJobId]: {
-            id: thirdJobId,
+            jobId: thirdJobId,
             createdAt: now - 7 * 24 * 60 * 60 * 1000,
             source: "dailyPrinceIssues",
             archivalType: "singleDay",
@@ -66,42 +64,6 @@ export function getFakeJobs() {
                 },
                 { timestamp: now - 7 * 24 * 60 * 60 * 1000 + 200, level: "info", message: "Starting archive process..." },
                 { timestamp: now - 7 * 24 * 60 * 60 * 1000 + 500, level: "info", message: "Archive process complete." },
-            ],
-        },
-        [fourthJobId]: {
-            id: fourthJobId,
-            createdAt: now - 10 * 24 * 60 * 60 * 1000,
-            source: "instagram",
-            archivalType: "mostRecent",
-            downloadUrl: "https://google.com",
-            state: "success",
-            logs: [
-                { timestamp: now - 10 * 24 * 60 * 60 * 1000, level: "info", message: "Archive job configured." },
-                {
-                    timestamp: now - 10 * 24 * 60 * 60 * 1000 + 100,
-                    level: "info",
-                    message: "Source: instagram, Type: mostRecent",
-                },
-                { timestamp: now - 10 * 24 * 60 * 60 * 1000 + 200, level: "info", message: "Starting archive process..." },
-                { timestamp: now - 10 * 24 * 60 * 60 * 1000 + 500, level: "info", message: "Archive process complete." },
-            ],
-        },
-        [fifthJobId]: {
-            id: fifthJobId,
-            createdAt: now - 14 * 24 * 60 * 60 * 1000,
-            source: "twitter",
-            archivalType: "urls",
-            downloadUrl: "https://google.com",
-            state: "success",
-            logs: [
-                { timestamp: now - 14 * 24 * 60 * 60 * 1000, level: "info", message: "Archive job configured." },
-                {
-                    timestamp: now - 14 * 24 * 60 * 60 * 1000 + 100,
-                    level: "info",
-                    message: "Source: twitter, Type: urls",
-                },
-                { timestamp: now - 14 * 24 * 60 * 60 * 1000 + 200, level: "info", message: "Starting archive process..." },
-                { timestamp: now - 14 * 24 * 60 * 60 * 1000 + 500, level: "info", message: "Archive process complete." },
             ],
         },
     };

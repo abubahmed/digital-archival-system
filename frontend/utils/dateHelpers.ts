@@ -1,3 +1,5 @@
+import { ArchivalConfig, DateRangeParams, MostRecentParams, SingleDayParams, UrlsParams } from "@/types";
+
 export function isValidYmd(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
@@ -99,28 +101,11 @@ export interface WindowPreview {
   body: string;
 }
 
-export function getWindowPreview(
-  archivalType: "singleDay" | "dateRange" | "urls" | "mostRecent",
-  singleDayParams: {
-    date?: string;
-    dateStartTime?: string;
-    dateEndTime?: string;
-  },
-  dateRangeParams: {
-    start?: string;
-    end?: string;
-    startTime?: string;
-    endTime?: string;
-  },
-  urlsParams: {
-    urls?: string[];
-  },
-  mostRecentParams: {
-    mostRecentSince?: string;
-    mostRecentCount?: number;
-  }
-): WindowPreview | null {
-  if (archivalType === "singleDay") {
+export function getWindowPreview(archivalConfig: ArchivalConfig): WindowPreview | null {
+  const { archivalType } = archivalConfig;
+  
+  if (archivalConfig.archivalType === "singleDay") {
+    const singleDayParams = archivalConfig.typeParams as SingleDayParams;
     if (!singleDayParams.date) return null;
     const window = computeWindowSingleDay(
       singleDayParams.date,
@@ -131,6 +116,7 @@ export function getWindowPreview(
   }
 
   if (archivalType === "dateRange") {
+    const dateRangeParams = archivalConfig.typeParams as DateRangeParams;
     if (!dateRangeParams.start || !dateRangeParams.end) return null;
     const window = computeWindowRange(
       dateRangeParams.start,
@@ -142,6 +128,7 @@ export function getWindowPreview(
   }
 
   if (archivalType === "mostRecent") {
+    const mostRecentParams = archivalConfig.typeParams as MostRecentParams;
     if (!mostRecentParams.mostRecentSince) return null;
     const since = parseEstDatetimeInput(mostRecentParams.mostRecentSince);
     if (Number.isNaN(since.getTime())) return null;
@@ -152,6 +139,7 @@ export function getWindowPreview(
   }
 
   if (archivalType === "urls") {
+    const urlsParams = archivalConfig.typeParams as UrlsParams;
     if (!urlsParams.urls) return null;
     const urlCount = urlsParams.urls.length;
     return {

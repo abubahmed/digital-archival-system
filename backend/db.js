@@ -19,7 +19,7 @@ export function initDatabase() {
             source TEXT NOT NULL,
             archivalType TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'running',
-            downloadUrl TEXT,
+            downloadUrl TEXT
         )
     `);
 

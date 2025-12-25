@@ -2,7 +2,7 @@ import { backendClient } from "../../../../utils/httpClient";
 import type { getJobResponse } from "../../../../types";
 
 // GET /api/jobs/[jobId] - Get specific job details
-export async function GET(req: Request, { params }: { params: { jobId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   if (!backendClient) {
     return new Response(JSON.stringify({ error: "Backend API not configured" }), {
       status: 503,
@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { jobId: string } 
   }
 
   try {
-    const { jobId } = params;
+    const { jobId } = await params;
     const response = await backendClient.get<getJobResponse>(`/jobs/${jobId}`);
     const job = response.job;
     return new Response(JSON.stringify({ job, error: null }), {
