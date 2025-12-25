@@ -1,41 +1,5 @@
 import { backendClient } from "../../../utils/httpClient";
-import type { Source, ArchivalType } from "../../../types";
-
-interface CreateJobRequest {
-  source: Source;
-  archivalType: ArchivalType;
-  authToken: string;
-  date?: string;
-  dateStartTime?: string;
-  dateEndTime?: string;
-  start?: string;
-  end?: string;
-  startTime?: string;
-  endTime?: string;
-  urls?: string[];
-  mostRecentCount?: number;
-  mostRecentSince?: string;
-}
-
-interface JobResponse {
-  id: string;
-  createdAt: number;
-  config: {
-    source: Source;
-    archivalType: ArchivalType;
-  };
-  state: "idle" | "running" | "success" | "error";
-  statusText: string;
-  downloadUrl?: string;
-}
-
-interface JobListResponse {
-  jobs: Omit<JobResponse, "downloadUrl">[];
-}
-
-interface CreateJobResponse {
-  jobId: string;
-}
+import type { Jobs, Job, ArchivalConfig } from "../../../types";
 
 // GET /api/jobs - List all jobs
 export async function GET(req: Request) {
@@ -47,11 +11,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    const url = new URL(req.url);
-    const authToken = url.searchParams.get("authToken") || req.headers.get("Authorization")?.replace("Bearer ", "");
-
-    const response = await backendClient.get<JobListResponse>("/jobs", authToken || undefined);
-    return new Response(JSON.stringify(response), {
+    const jobs = await backendClient.get<Jobs>("/jobs");
+    return new Response(JSON.stringify(jobs), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -74,11 +35,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body: CreateJobRequest = await req.json();
-    const { authToken, ...jobConfig } = body;
-
-    const response = await backendClient.post<CreateJobResponse>("/jobs", jobConfig, authToken);
-    return new Response(JSON.stringify(response), {
+    const body: ArchivalConfig = await req.json();
+    const job = await backendClient.post<Job>("/jobs", body);
+    return new Response(JSON.stringify(job), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });

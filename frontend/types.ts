@@ -19,9 +19,7 @@ export interface Job {
   archivalType: ArchivalType;
 }
 
-export interface JobsMap {
-  [key: string]: Job;
-}
+export type Jobs = Record<string, Job>;
 
 export interface SingleDayParams {
   date: string;
@@ -54,22 +52,4 @@ export interface ArchivalConfig {
   source: Source;
   archivalType: ArchivalType;
   createdAt: number;
-}
-
-export interface getJobsResponse {
-  jobs: JobsMap;
-  status: "success" | "error";
-  message: string;
-}
-
-export interface getJobResponse {
-  job: Job;
-  status: "success" | "error";
-  message: string;
-}
-
-export interface postJobResponse {
-  job: Job;
-  status: "success" | "error";
-  message: string;
 }

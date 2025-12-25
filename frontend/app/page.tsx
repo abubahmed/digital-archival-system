@@ -7,9 +7,8 @@ import { formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
 import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
-import type { Source, ArchivalType, RunState, Job, JobsMap } from "../types";
+import type { Source, ArchivalType, RunState, Job, Jobs } from "../types";
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
-import type { getJobsResponse, getJobResponse, postJobResponse } from "../types";
 
 const statusTexts: Record<RunState, string> = {
   idle: "Ready.",
@@ -48,7 +47,7 @@ export default function Page() {
   const [authToken, setAuthToken] = useState<string>("");
 
   // Jobs
-  const [jobs, setJobs] = useState<JobsMap>({});
+  const [jobs, setJobs] = useState<Jobs>({});
   const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
@@ -57,9 +56,9 @@ export default function Page() {
   const fetchAllJobs = async () => {
     try {
       const JOBS_ENDPOINT = "/jobs";
-      const jobs = await apiClient.get<getJobsResponse>(JOBS_ENDPOINT, authToken);
+      const jobs = await apiClient.get<Jobs>(JOBS_ENDPOINT, authToken);
       console.log("Fetched jobs:", jobs);
-      setJobs(jobs.jobs);
+      setJobs(jobs);
       return jobs;
     } catch (error) {
       console.error("Error fetching jobs:", error);
@@ -71,10 +70,10 @@ export default function Page() {
   const fetchSingleJob = async (jobId: string): Promise<Job | null> => {
     try {
       const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
-      const job = await apiClient.get<getJobResponse>(JOB_DETAIL_ENDPOINT, authToken);
+      const job = await apiClient.get<Job>(JOB_DETAIL_ENDPOINT, authToken);
       console.log("Fetched job:", job);
-      setJobs((prev) => ({ ...prev, [jobId]: job.job }));
-      return job.job;
+      setJobs((prev) => ({ ...prev, [job.id]: job }));
+      return job;
     } catch (error) {
       console.error("Error fetching job detail:", error);
       return null;
@@ -161,7 +160,7 @@ export default function Page() {
       });
 
       await fetchAllJobs();
-      setDisplayedJob(jobs[response.jobId] || null);
+      setDisplayedJob(jobs[response.jobId]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Failed to create archive job:", msg);

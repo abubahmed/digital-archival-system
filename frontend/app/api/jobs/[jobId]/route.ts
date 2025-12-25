@@ -1,16 +1,5 @@
 import { backendClient } from "../../../../utils/httpClient";
-
-interface JobDetailResponse {
-  id: string;
-  createdAt: number;
-  statusText: string;
-  logs: Array<{
-    ts: number;
-    level: string;
-    msg: string;
-  }>;
-  downloadUrl?: string;
-}
+import type { Job } from "../../../../types";
 
 // GET /api/jobs/[jobId] - Get specific job details
 export async function GET(req: Request, { params }: { params: { jobId: string } }) {
@@ -23,11 +12,8 @@ export async function GET(req: Request, { params }: { params: { jobId: string } 
 
   try {
     const { jobId } = params;
-    const url = new URL(req.url);
-    const authToken = url.searchParams.get("authToken") || req.headers.get("Authorization")?.replace("Bearer ", "");
-
-    const response = await backendClient.get<JobDetailResponse>(`/jobs/${jobId}`, authToken || undefined);
-    return new Response(JSON.stringify(response), {
+    const job = await backendClient.get<Job>(`/jobs/${jobId}`);
+    return new Response(JSON.stringify(job), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
