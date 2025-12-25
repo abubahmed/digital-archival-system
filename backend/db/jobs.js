@@ -1,55 +1,64 @@
 import { db } from "../db.js";
 
 export function createJob(job) {
-    const { id, createdAt, config, status = "running", downloadUrl } = job;
+    const { jobId, createdAt, state, downloadUrl, source, archivalType } = job;
 
     db.prepare(
         `
-            INSERT INTO jobs (id, createdAt, source, archivalType, state, statusText, downloadUrl, config)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (jobId, createdAt, state, downloadUrl, source, archivalType)
+            VALUES (?, ?, ?, ?, ?, ?)
         `
-    ).run(id, createdAt, config.source, config.archivalType, state, statusText, downloadUrl || null, JSON.stringify(config));
+    ).run(jobId, createdAt, state, downloadUrl || null, source, archivalType);
 
-    return { id, createdAt, config, state, statusText, downloadUrl };
+    return { jobId, createdAt, state, downloadUrl, source, archivalType };
 }
 
-/**
- * Get all jobs (basic info, no logs)
- */
 export function getAllJobs() {
     const jobs = db
         .prepare(
             `
-                SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
+                SELECT jobId, createdAt, state, downloadUrl, source, archivalType
                 FROM jobs
                 ORDER BY createdAt DESC
             `
         )
         .all();
 
-    return jobs.map((job) => ({
-        id: job.id,
-        createdAt: job.createdAt,
-        config: {
+    const getLogsStmt = db.prepare(
+        `
+            SELECT message, timestamp, level
+            FROM logs
+            WHERE jobId = ?
+            ORDER BY timestamp ASC
+        `
+    );
+
+    return jobs.reduce((acc, job) => {
+        const logs = getLogsStmt.all(job.jobId);
+        acc[job.jobId] = {
+            jobId: job.jobId,
+            createdAt: job.createdAt,
+            state: job.state,
+            downloadUrl: job.downloadUrl || undefined,
             source: job.source,
             archivalType: job.archivalType,
-        },
-        state: job.state,
-        statusText: job.statusText,
-        downloadUrl: job.downloadUrl || undefined,
-    }));
+            logs: logs.map((log) => ({
+                message: log.message,
+                timestamp: log.timestamp,
+                level: log.level,
+            })),
+        };
+        return acc;
+    }, {});
 }
 
-/**
- * Get job by ID (with logs)
- */
 export function getJobById(jobId) {
     const job = db
         .prepare(
             `
-                SELECT id, createdAt, source, archivalType, state, statusText, downloadUrl
+                SELECT jobId, createdAt, state, downloadUrl, source, archivalType
                 FROM jobs
-                WHERE id = ?
+                WHERE jobId = ?
             `
         )
         .get(jobId);
@@ -59,7 +68,7 @@ export function getJobById(jobId) {
     const logs = db
         .prepare(
             `
-                SELECT timestamp, level, message
+                SELECT message, timestamp, level
                 FROM logs
                 WHERE jobId = ?
                 ORDER BY timestamp ASC
@@ -68,49 +77,16 @@ export function getJobById(jobId) {
         .all(jobId);
 
     return {
-        id: job.id,
+        jobId: job.jobId,
         createdAt: job.createdAt,
-        config: {
-            source: job.source,
-            archivalType: job.archivalType,
-        },
         state: job.state,
-        statusText: job.statusText,
         downloadUrl: job.downloadUrl || undefined,
+        source: job.source,
+        archivalType: job.archivalType,
         logs: logs.map((log) => ({
-            ts: log.timestamp,
+            message: log.message,
+            timestamp: log.timestamp,
             level: log.level,
-            msg: log.message,
         })),
     };
 }
-
-/**
- * Update job state
- */
-export function updateJob(jobId, updates) {
-    const { state, statusText, downloadUrl } = updates;
-
-    const setParts = [];
-    const values = [];
-
-    if (state !== undefined) {
-        setParts.push("state = ?");
-        values.push(state);
-    }
-    if (statusText !== undefined) {
-        setParts.push("statusText = ?");
-        values.push(statusText);
-    }
-    if (downloadUrl !== undefined) {
-        setParts.push("downloadUrl = ?");
-        values.push(downloadUrl || null);
-    }
-
-    if (setParts.length === 0) return;
-
-    values.push(jobId);
-
-    db.prepare(`UPDATE jobs SET ${setParts.join(", ")} WHERE id = ?`).run(...values);
-}
-

@@ -10,12 +10,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
     const { jobId } = await params;
     const backendUrl = `${BACKEND_API_URL}/jobs/${jobId}/stream`;
 
-    // Forward the SSE request to the backend
     const backendResponse = await fetch(backendUrl, {
       method: "GET",
       headers: {
         "Cache-Control": "no-cache",
       },
+      signal: req.signal,
     });
 
     if (!backendResponse.ok) {
@@ -24,16 +24,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
       });
     }
 
-    // Create a ReadableStream to pipe the SSE stream
     const stream = new ReadableStream({
       async start(controller) {
         const reader = backendResponse.body?.getReader();
         const decoder = new TextDecoder();
+        controller.enqueue(new TextEncoder().encode(":ok\n\n"));
 
         if (!reader) {
           controller.close();
           return;
         }
+
+        req.signal.addEventListener("abort", () => {
+          reader.cancel().catch(() => {});
+          controller.close();
+        });
 
         try {
           while (true) {
@@ -44,10 +49,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
             controller.enqueue(new TextEncoder().encode(chunk));
           }
         } catch (error) {
-          controller.error(error);
+          if (error instanceof Error && error.name !== "AbortError") {
+            controller.error(error);
+          }
         } finally {
+          reader.cancel().catch(() => {});
           controller.close();
         }
+      },
+      cancel() {
+        backendResponse.body?.cancel().catch(() => {});
       },
     });
 

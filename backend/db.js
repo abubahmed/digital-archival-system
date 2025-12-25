@@ -12,14 +12,18 @@ export const db = new Database(DB_PATH);
 db.pragma("foreign_keys = ON");
 
 export function initDatabase() {
+    // Drop existing tables if they exist to recreate with new schema
+    db.exec(`DROP TABLE IF EXISTS logs`);
+    db.exec(`DROP TABLE IF EXISTS jobs`);
+
     db.exec(`
         CREATE TABLE IF NOT EXISTS jobs (
-            id TEXT PRIMARY KEY,
+            jobId TEXT PRIMARY KEY,
             createdAt INTEGER NOT NULL,
+            state TEXT NOT NULL,
+            downloadUrl TEXT,
             source TEXT NOT NULL,
-            archivalType TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'running',
-            downloadUrl TEXT
+            archivalType TEXT NOT NULL
         )
     `);
 
@@ -27,10 +31,10 @@ export function initDatabase() {
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             jobId TEXT NOT NULL,
+            message TEXT NOT NULL,
             timestamp INTEGER NOT NULL,
             level TEXT NOT NULL,
-            message TEXT NOT NULL,
-            FOREIGN KEY (jobId) REFERENCES jobs(id) ON DELETE CASCADE
+            FOREIGN KEY (jobId) REFERENCES jobs(jobId) ON DELETE CASCADE
         )
     `);
 

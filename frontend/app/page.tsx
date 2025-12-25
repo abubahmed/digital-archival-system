@@ -89,6 +89,7 @@ export default function Page() {
 
     if (!jobId) {
       if (eventSourceRef.current) {
+        console.log("Closing event source for no job");
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
@@ -97,6 +98,7 @@ export default function Page() {
 
     if (jobState !== "running") {
       if (eventSourceRef.current) {
+        console.log("Closing event source for non-running job");
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
@@ -104,9 +106,11 @@ export default function Page() {
     }
 
     if (eventSourceRef.current) {
+      console.log("Closing existing event source");
       eventSourceRef.current.close();
     }
 
+    console.log("Creating new event source for job", jobId);
     const eventSource = new EventSource(`/api/jobs/${jobId}/stream`);
     eventSourceRef.current = eventSource;
 
@@ -135,10 +139,11 @@ export default function Page() {
     };
 
     return () => {
+      console.log("Closing event source");
       eventSource.close();
       eventSourceRef.current = null;
     };
-  }, [displayedJob?.jobId, displayedJob?.state]);
+  }, [displayedJob?.jobId]);
 
   // Scroll to bottom of log viewport
   useEffect(() => {

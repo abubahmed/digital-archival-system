@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { jobsRouter } from "./routes/jobs.js";
+import "./db.js";
 
 const app = express();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;

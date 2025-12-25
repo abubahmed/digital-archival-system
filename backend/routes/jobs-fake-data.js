@@ -1,14 +1,12 @@
 import express from "express";
-import { getAllJobs, createJob, getJobById } from "../db/jobs.js";
-import { generateJobId } from "../utils/jobHelpers.js";
-import { validateBeforeRun } from "../utils/validation.js";
+import { getFakeJobs } from "../data.js";
 
 const router = express.Router();
 
 // GET /jobs - List all jobs
 router.get("/", (req, res) => {
     try {
-        const jobs = getAllJobs();
+        const jobs = getFakeJobs();
         res.status(200).json({ jobs: jobs, error: null });
     } catch (error) {
         res.status(500).json({ jobs: {}, error: error.message });
@@ -19,26 +17,10 @@ router.get("/", (req, res) => {
 router.post("/", (req, res) => {
     try {
         console.log("req.body", req.body);
-        const validationError = validateBeforeRun(req.body);
-        if (validationError) {
-            return res.status(400).json({ error: validationError });
-        }
+        const randomFakeJobId = Object.keys(getFakeJobs())[Math.floor(Math.random() * Object.keys(getFakeJobs()).length)];
+        const fakeJob = getFakeJobs()[randomFakeJobId];
 
-        const { typeParams, authToken, source, archivalType } = req.body;
-        const createdAt = Date.now();
-        const jobId = generateJobId(source, archivalType, createdAt);
-
-        const jobData = {
-            jobId,
-            createdAt,
-            state: "running",
-            downloadUrl: null,
-            source,
-            archivalType,
-        };
-        createJob(jobData);
-        const job = getJobById(jobId);
-        res.status(201).json({ job: job, error: null });
+        res.status(201).json({ job: fakeJob, error: null });
     } catch (error) {
         res.status(500).json({ job: null, error: error.message });
     }
@@ -48,7 +30,7 @@ router.post("/", (req, res) => {
 router.get("/:jobId", (req, res) => {
     try {
         const { jobId } = req.params;
-        const job = getJobById(jobId);
+        const job = getFakeJobs()[jobId];
         if (!job) {
             return res.status(404).json({ error: "Job not found" });
         }
@@ -71,43 +53,45 @@ router.get("/:jobId/stream", (req, res) => {
     res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
     res.write(": connected\n\n");
 
-    const job = getJobById(jobId);
+    const fakeJobs = getFakeJobs();
+    const job = fakeJobs[jobId];
     if (!job) {
         res.write(`data: ${JSON.stringify({ error: "Job not found" })}\n\n`);
-        res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);
         res.end();
         return;
     }
 
     res.write(`data: ${JSON.stringify({ job })}\n\n`);
-    const DELAY_BETWEEN_UPDATES = 5000;
+    const DELAY_BETWEEN_UPDATES = 1000;
     if (job.state !== "running") {
-        res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);
         res.end();
         return;
     }
 
     const intervalId = setInterval(() => {
-        const currentJob = getJobById(jobId);
+        const currentJob = getFakeJobs()[jobId];
         if (!currentJob) {
             clearInterval(intervalId);
-            res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);
             res.end();
             return;
         }
 
-        console.log("Writing to job with id", jobId, "at", new Date().toISOString());
+        console.log("Writing job update at", new Date().toISOString());
+        currentJob.logs.push({
+            timestamp: Date.now(),
+            message: "Created debug log at " + new Date().toISOString(),
+            level: "info",
+        });
+
         res.write(`data: ${JSON.stringify({ job: currentJob })}\n\n`);
         if (currentJob.state !== "running") {
             clearInterval(intervalId);
-            res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);
             res.end();
         }
     }, DELAY_BETWEEN_UPDATES);
 
     req.on("close", () => {
         clearInterval(intervalId);
-        res.write(`data: ${JSON.stringify({ event: "end" })}\n\n`);
         res.end();
     });
 });
