@@ -1,4 +1,4 @@
-const BACKEND_API_URL = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || "";
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || "";
 
 class HttpClient {
   private baseURL: string;

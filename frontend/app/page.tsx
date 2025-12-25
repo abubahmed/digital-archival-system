@@ -83,7 +83,7 @@ export default function Page() {
   // Fetch all jobs
   useEffect(() => {
     fetchAllJobs();
-  }, [fetchAllJobs]);
+  }, []);
 
   const clearPollingInterval = useCallback(() => {
     if (pollingIntervalRef.current) {
