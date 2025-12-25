@@ -7,25 +7,8 @@ import { formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
 import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
-
-export type LogLevel = "debug" | "info" | "warn" | "error";
-export type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyPrince" | "dailyPrinceIssues";
-export type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
-export type RunState = "idle" | "running" | "success" | "error";
-
-export interface LogLine {
-  ts: number;
-  level: LogLevel;
-  msg: string;
-}
-
-interface Job {
-  id: string;
-  status: RunState;
-  downloadUrl?: string;
-  logs: LogLine[];
-  createdAt: number;
-}
+import type { Source, ArchivalType, RunState, Job, JobsMap } from "../types";
+import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
 
 const statusTexts: Record<RunState, string> = {
   idle: "Ready.",
@@ -41,12 +24,12 @@ export default function Page() {
 
   // Params
   const todayStr = getTodayStr();
-  const [singleDayParams, setSingleDayParams] = useState({
+  const [singleDayParams, setSingleDayParams] = useState<SingleDayParams>({
     date: todayStr,
     dateStartTime: "00:00",
     dateEndTime: "00:00",
   });
-  const [dateRangeParams, setDateRangeParams] = useState({
+  const [dateRangeParams, setDateRangeParams] = useState<DateRangeParams>({
     start: todayStr,
     end: todayStr,
     startTime: "00:00",
@@ -54,8 +37,8 @@ export default function Page() {
   });
   const [urlsText, setUrlsText] = useState<string>("");
   const normalizedUrls = useMemo(() => normalizeUrls(urlsText), [urlsText]);
-  const urlsParams = useMemo(() => ({ urls: normalizedUrls }), [normalizedUrls]);
-  const [mostRecentParams, setMostRecentParams] = useState({
+  const urlsParams = useMemo(() => ({ urls: normalizedUrls }), [normalizedUrls]) as UrlsParams;
+  const [mostRecentParams, setMostRecentParams] = useState<MostRecentParams>({
     mostRecentCount: 50,
     mostRecentSince: getInitialMostRecentSince(),
   });
@@ -64,7 +47,7 @@ export default function Page() {
   const [authToken, setAuthToken] = useState<string>("");
 
   // Jobs
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobsMap>({});
   const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
@@ -73,13 +56,13 @@ export default function Page() {
   const fetchAllJobs = async () => {
     try {
       const JOBS_ENDPOINT = "/jobs";
-      const jobs = await apiClient.get<Job[]>(JOBS_ENDPOINT, authToken);
+      const jobs = await apiClient.get<JobsMap>(JOBS_ENDPOINT, authToken);
       console.log("Fetched jobs:", jobs);
-      setJobs(jobs);
+      setJobs(jobs as JobsMap);
       return jobs;
     } catch (error) {
       console.error("Error fetching jobs:", error);
-      setJobs([] as Job[]);
+      setJobs({} as JobsMap);
     }
   };
 
@@ -89,7 +72,7 @@ export default function Page() {
       const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
       const job = await apiClient.get<Job>(JOB_DETAIL_ENDPOINT, authToken);
       console.log("Fetched job:", job);
-      setJobs((prev) => prev.map((prevJob) => (prevJob.id === jobId ? job : prevJob)));
+      setJobs((prev) => ({ ...prev, [jobId]: job }));
       return job;
     } catch (error) {
       console.error("Error fetching job detail:", error);
@@ -177,10 +160,7 @@ export default function Page() {
       });
 
       await fetchAllJobs();
-      const thisJob = jobs.find((j) => j.id === response.jobId);
-      if (thisJob) {
-        setDisplayedJob(thisJob);
-      }
+      setDisplayedJob(jobs[response.jobId] || null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Failed to create archive job:", msg);
@@ -430,7 +410,7 @@ export default function Page() {
                         min={1}
                         step={1}
                         className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={mostRecentParams.mostRecentCount.toString()}
+                        value={mostRecentParams.mostRecentCount}
                         onChange={(e) =>
                           setMostRecentParams((prev) => ({
                             ...prev,
@@ -538,13 +518,13 @@ export default function Page() {
 
               <div>
                 <div className="mb-2 text-sm font-medium text-gray-900">All Jobs</div>
-                {jobs.length === 0 ? (
+                {Object.keys(jobs).length === 0 ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
                     No jobs yet.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
-                    {jobs.map((job) => {
+                    {Object.values(jobs).map((job: Job) => {
                       const isOpen = displayedJob?.id === job.id;
                       return (
                         <div
