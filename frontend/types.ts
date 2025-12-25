@@ -53,6 +53,7 @@ export interface ArchivalConfig {
   authToken: string;
   source: Source;
   archivalType: ArchivalType;
+  createdAt: number;
 }
 
 export interface getJobsResponse {

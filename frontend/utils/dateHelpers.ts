@@ -151,9 +151,14 @@ export function getWindowPreview(
     };
   }
 
-  const urlCount = urlsParams.urls?.length || 0;
-  return {
-    headline: "Selection window",
-    body: `Using explicit URL list (${urlCount} URL${urlCount === 1 ? "" : "s"}).`,
-  };
+  if (archivalType === "urls") {
+    if (!urlsParams.urls) return null;
+    const urlCount = urlsParams.urls.length;
+    return {
+      headline: "Selection window",
+      body: `Using explicit URL list (${urlCount} URL${urlCount === 1 ? "" : "s"}).`,
+    };
+  }
+
+  return null;
 }

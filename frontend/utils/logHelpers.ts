@@ -1,4 +1,4 @@
-export type LogLevel = "debug" | "info" | "warn" | "error";
+import type { LogLevel } from "../types";
 
 export function formatLogTs(ts: number) {
   const d = new Date(ts);

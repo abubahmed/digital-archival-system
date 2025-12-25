@@ -1,5 +1,5 @@
 import { isValidYmd, parseEstDatetimeInput } from "./dateHelpers";
-import type { ArchivalType } from "../app/page";
+import type { ArchivalType } from "../types";
 
 function validateSingleDayParams(singleDayParams: {
   date: string;

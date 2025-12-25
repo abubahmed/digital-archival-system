@@ -9,6 +9,7 @@ import { apiClient } from "../utils/httpClient";
 import { normalizeUrls } from "../utils/urlHelpers";
 import type { Source, ArchivalType, RunState, Job, JobsMap } from "../types";
 import type { SingleDayParams, DateRangeParams, UrlsParams, MostRecentParams } from "../types";
+import type { getJobsResponse, getJobResponse, postJobResponse } from "../types";
 
 const statusTexts: Record<RunState, string> = {
   idle: "Ready.",
@@ -56,13 +57,13 @@ export default function Page() {
   const fetchAllJobs = async () => {
     try {
       const JOBS_ENDPOINT = "/jobs";
-      const jobs = await apiClient.get<JobsMap>(JOBS_ENDPOINT, authToken);
+      const jobs = await apiClient.get<getJobsResponse>(JOBS_ENDPOINT, authToken);
       console.log("Fetched jobs:", jobs);
-      setJobs(jobs as JobsMap);
+      setJobs(jobs.jobs);
       return jobs;
     } catch (error) {
       console.error("Error fetching jobs:", error);
-      setJobs({} as JobsMap);
+      setJobs({});
     }
   };
 
@@ -70,10 +71,10 @@ export default function Page() {
   const fetchSingleJob = async (jobId: string): Promise<Job | null> => {
     try {
       const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
-      const job = await apiClient.get<Job>(JOB_DETAIL_ENDPOINT, authToken);
+      const job = await apiClient.get<getJobResponse>(JOB_DETAIL_ENDPOINT, authToken);
       console.log("Fetched job:", job);
-      setJobs((prev) => ({ ...prev, [jobId]: job }));
-      return job;
+      setJobs((prev) => ({ ...prev, [jobId]: job.job }));
+      return job.job;
     } catch (error) {
       console.error("Error fetching job detail:", error);
       return null;

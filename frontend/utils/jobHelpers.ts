@@ -1,8 +1,5 @@
-import type { Source, ArchivalType } from "../app/page";
+import type { Source, ArchivalType } from "../types";
 
-/**
- * Generates a random string of specified length using alphanumeric characters
- */
 function generateRandomString(length: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
@@ -12,9 +9,6 @@ function generateRandomString(length: number): string {
   return result;
 }
 
-/**
- * Formats a timestamp as YYYYMMDDHHmmss
- */
 function formatTimestamp(timestamp: number): string {
   const d = new Date(timestamp);
   const yyyy = d.getFullYear();
@@ -26,10 +20,6 @@ function formatTimestamp(timestamp: number): string {
   return `${yyyy}${mm}${dd}${hh}${min}${ss}`;
 }
 
-/**
- * Generates a job ID with format: source-archivalType-timestamp-random32
- * Example: dailyPrince-singleDay-20250120123456-aB3dEf9gHiJkLmNoPqRsTuVwXyZ1
- */
 export function generateJobId(source: Source, archivalType: ArchivalType, timestamp: number = Date.now()): string {
   const timestampStr = formatTimestamp(timestamp);
   const randomStr = generateRandomString(32);
