@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import { backendClient } from "../../../utils/httpClient";
 import type { Source, ArchivalType } from "../../../types";
 

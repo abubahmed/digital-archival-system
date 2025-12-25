@@ -1,15 +1,8 @@
-export const runtime = "nodejs";
-
 import { backendClient } from "../../../../utils/httpClient";
 
 interface JobDetailResponse {
   id: string;
   createdAt: number;
-  config: {
-    source: string;
-    archivalType: string;
-  };
-  state: "idle" | "running" | "success" | "error";
   statusText: string;
   logs: Array<{
     ts: number;

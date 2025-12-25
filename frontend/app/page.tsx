@@ -1,20 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RadioCard from "../components/RadioCard";
 import { getTodayStr, getInitialMostRecentSince, getWindowPreview } from "../utils/dateHelpers";
 import { formatLogTs, levelClass } from "../utils/logHelpers";
 import { validateBeforeRun } from "../utils/validation";
-import { generateJobId } from "../utils/jobHelpers";
-import { useJobManagement } from "../hooks/useJobManagement";
-import { jobListUtils } from "../utils/jobManagement";
-import type { Source, ArchivalType, PastJob } from "../types";
-import { getInitialPastJobs } from "../data";
-import { runFakeArchivalProcess, type ArchivalConfig } from "../utils/archivalProcess";
+import { apiClient } from "../utils/httpClient";
+import { normalizeUrls } from "../utils/urlHelpers";
 
-const LOCAL_STORAGE_KEYS = {
-  REMEMBER_AUTH: "archive_ui_remember_auth",
-  AUTH_TOKEN: "archive_ui_auth_token",
+export type LogLevel = "debug" | "info" | "warn" | "error";
+export type Source = "instagram" | "twitter" | "tiktok" | "newsletter" | "dailyPrince" | "dailyPrinceIssues";
+export type ArchivalType = "singleDay" | "dateRange" | "urls" | "mostRecent";
+export type RunState = "idle" | "running" | "success" | "error";
+
+export interface LogLine {
+  ts: number;
+  level: LogLevel;
+  msg: string;
+}
+
+interface Job {
+  id: string;
+  status: RunState;
+  downloadUrl?: string;
+  logs: LogLine[];
+  createdAt: number;
+}
+
+const statusTexts: Record<RunState, string> = {
+  idle: "Ready.",
+  running: "Running...",
+  success: "Done.",
+  error: "Failed.",
 };
 
 export default function Page() {
@@ -22,211 +39,161 @@ export default function Page() {
   const [source, setSource] = useState<Source>("dailyPrince");
   const [archivalType, setArchivalType] = useState<ArchivalType>("singleDay");
 
-  // Dates
+  // Params
   const todayStr = getTodayStr();
-
-  const [date, setDate] = useState<string>(todayStr);
-  const [dateStartTime, setDateStartTime] = useState<string>("00:00");
-  const [dateEndTime, setDateEndTime] = useState<string>("00:00");
-  const [start, setStart] = useState<string>(todayStr);
-  const [startTime, setStartTime] = useState<string>("00:00");
-  const [end, setEnd] = useState<string>(todayStr);
-  const [endTime, setEndTime] = useState<string>("00:00");
-
-  // URL mode
-  const [urlsText, setUrlsText] = useState("");
-
-  // Most recent mode
-  const [mostRecentCount, setMostRecentCount] = useState<number>(50);
-  const [mostRecentSince, setMostRecentSince] = useState<string>(getInitialMostRecentSince());
+  const [singleDayParams, setSingleDayParams] = useState({
+    date: todayStr,
+    dateStartTime: "00:00",
+    dateEndTime: "00:00",
+  });
+  const [dateRangeParams, setDateRangeParams] = useState({
+    start: todayStr,
+    end: todayStr,
+    startTime: "00:00",
+    endTime: "00:00",
+  });
+  const [urlsText, setUrlsText] = useState<string>("");
+  const normalizedUrls = useMemo(() => normalizeUrls(urlsText), [urlsText]);
+  const urlsParams = useMemo(() => ({ urls: normalizedUrls }), [normalizedUrls]);
+  const [mostRecentParams, setMostRecentParams] = useState({
+    mostRecentCount: 50,
+    mostRecentSince: getInitialMostRecentSince(),
+  });
 
   // Auth
   const [authToken, setAuthToken] = useState<string>("");
-  const [rememberAuth, setRememberAuth] = useState<boolean>(() => {
-    try {
-      const saved = window.localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_AUTH);
-      return saved !== null ? saved === "true" : true;
-    } catch {
-      return true;
-    }
-  });
 
-  // Job management hook
-  const {
-    allJobs,
-    displayedJobId,
-    displayedJob,
-    runState,
-    statusText,
-    logs,
-    addJob,
-    openJob,
-    createJobLogFunction,
-    setAllJobs,
-  } = useJobManagement([]);
-
-  // Log viewport ref for auto-scrolling
+  // Jobs
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [displayedJob, setDisplayedJob] = useState<Job | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logViewportRef = useRef<HTMLDivElement | null>(null);
 
-  // Initialize allJobs on client side only to avoid hydration mismatch
+  // Fetches the list of all jobs from the API and sets the jobs state.
+  const fetchAllJobs = async () => {
+    try {
+      const JOBS_ENDPOINT = "/jobs";
+      const jobs = await apiClient.get<Job[]>(JOBS_ENDPOINT, authToken);
+      console.log("Fetched jobs:", jobs);
+      setJobs(jobs);
+      return jobs;
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+      setJobs([] as Job[]);
+    }
+  };
+
+  // Fetches the details of a single job from the API and sets the displayed job state.
+  const fetchSingleJob = async (jobId: string): Promise<Job | null> => {
+    try {
+      const JOB_DETAIL_ENDPOINT = `/jobs/${jobId}`;
+      const job = await apiClient.get<Job>(JOB_DETAIL_ENDPOINT, authToken);
+      console.log("Fetched job:", job);
+      setJobs((prev) => prev.map((prevJob) => (prevJob.id === jobId ? job : prevJob)));
+      return job;
+    } catch (error) {
+      console.error("Error fetching job detail:", error);
+      return null;
+    }
+  };
+
+  // Fetch all jobs
   useEffect(() => {
-    setAllJobs(getInitialPastJobs());
-  }, [setAllJobs]);
+    fetchAllJobs();
+  }, [fetchAllJobs]);
 
-  // Auto-scroll logs
+  const clearPollingInterval = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Poll job status
   useEffect(() => {
-    const el = logViewportRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [logs.length]);
+    const jobId = displayedJob?.id;
+    if (!jobId) {
+      clearPollingInterval();
+      setDisplayedJob(null);
+      return;
+    }
 
-  const isRunning = runState === "running";
+    const checkJobStatus = async () => {
+      const job = await fetchSingleJob(jobId);
+      if (job && job.status !== "running") {
+        clearPollingInterval();
+      }
+    };
 
-  // Normalize URLs
-  const normalizedUrls = useMemo(() => {
-    return urlsText
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [urlsText]);
+    const CHECK_JOB_STATUS_INTERVAL = 2000;
+    pollingIntervalRef.current = setInterval(checkJobStatus, CHECK_JOB_STATUS_INTERVAL);
+    return clearPollingInterval;
+  }, [displayedJob?.id, fetchSingleJob]);
+
+  // Scroll to bottom of log viewport
+  useEffect(() => {
+    const element = logViewportRef.current;
+    if (!element) return;
+    element.scrollTop = element.scrollHeight;
+  }, [displayedJob?.logs.length]);
+
+  // Displayed job
+  const isRunning = displayedJob?.status === "running";
+  const statusText = statusTexts[displayedJob?.status ?? "idle"];
+  const logs = displayedJob?.logs ?? [];
 
   // Window selection preview
   const windowPreview = useMemo(
-    () =>
-      getWindowPreview(archivalType, {
-        date,
-        dateStartTime,
-        dateEndTime,
-        start,
-        end,
-        startTime,
-        endTime,
-        mostRecentSince,
-        mostRecentCount,
-        normalizedUrlsLength: normalizedUrls.length,
-      }),
-    [
-      archivalType,
-      date,
-      dateStartTime,
-      dateEndTime,
-      start,
-      end,
-      startTime,
-      endTime,
-      mostRecentSince,
-      mostRecentCount,
-      normalizedUrls.length,
-    ]
+    () => getWindowPreview(archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams),
+    [archivalType, singleDayParams, dateRangeParams, urlsParams, mostRecentParams]
   );
-
-  // Save rememberAuth preference to localStorage
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_AUTH, String(rememberAuth));
-    } catch {
-      // ignore
-    }
-  }, [rememberAuth]);
-
-  // Load and save auth token from/to localStorage
-  const hasLoadedToken = useRef(false);
-  useEffect(() => {
-    try {
-      if (rememberAuth) {
-        // Load on mount if not already loaded
-        if (!hasLoadedToken.current) {
-          const saved = window.localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
-          if (saved) {
-            setAuthToken(saved);
-          }
-          hasLoadedToken.current = true;
-        } else if (authToken) {
-          // Save when authToken changes (after initial load)
-          window.localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, authToken);
-        }
-      } else {
-        // Remove when rememberAuth is disabled
-        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
-        hasLoadedToken.current = false;
-      }
-    } catch {
-      // ignore
-    }
-  }, [authToken, rememberAuth]);
 
   const validationError = useMemo(
     () =>
-      validateBeforeRun(archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken),
-    [archivalType, date, start, end, normalizedUrls, mostRecentSince, mostRecentCount, authToken]
+      validateBeforeRun(
+        archivalType,
+        singleDayParams.date,
+        dateRangeParams.start,
+        dateRangeParams.end,
+        normalizedUrls,
+        mostRecentParams.mostRecentSince,
+        mostRecentParams.mostRecentCount,
+        authToken
+      ),
+    [archivalType, singleDayParams, dateRangeParams, normalizedUrls, mostRecentParams, authToken]
   );
 
   async function generateArchive() {
     if (validationError) {
-      // For validation errors, we don't create a job, just show the error
-      // The error is already displayed in the UI via validationError
       return;
     }
 
-    // Generate job ID at the start
-    const createdAt = Date.now();
-    const jobId = generateJobId(source, archivalType, createdAt);
-
-    // Create and add job to list
-    const newJob = jobListUtils.createJob(jobId, createdAt, source, archivalType, "running", "Running...", []);
-    addJob(newJob);
-    openJob(newJob);
-
-    // Create job-specific log function
-    const pushJobLog = createJobLogFunction(jobId);
-    pushJobLog("info", "Archive job configured.");
-    pushJobLog("info", `Source: ${source}, Type: ${archivalType}`);
-
     try {
-      // Prepare archival configuration
-      const archivalConfig: ArchivalConfig = {
+      const params =
+        archivalType === "singleDay"
+          ? singleDayParams
+          : archivalType === "dateRange"
+          ? dateRangeParams
+          : archivalType === "urls"
+          ? urlsParams
+          : mostRecentParams;
+
+      const response = await apiClient.post<{ jobId: string }>("/jobs", {
         source,
         archivalType,
         authToken,
-        date,
-        dateStartTime,
-        dateEndTime,
-        start,
-        end,
-        startTime,
-        endTime,
-        urls: normalizedUrls,
-        mostRecentCount,
-        mostRecentSince,
-      };
-
-      // Run the archival process
-      const result = await runFakeArchivalProcess(archivalConfig, pushJobLog);
-
-      // Update job with final state - use functional update to get latest logs
-      setAllJobs((prev) => {
-        const currentJob = jobListUtils.findJob(prev, jobId);
-        const currentLogs = currentJob?.logs ?? [];
-        return jobListUtils.updateJobState(
-          prev,
-          jobId,
-          result.state,
-          result.statusText,
-          currentLogs,
-          result.downloadUrl
-        );
+        params,
       });
+
+      await fetchAllJobs();
+      const thisJob = jobs.find((j) => j.id === response.jobId);
+      if (thisJob) {
+        setDisplayedJob(thisJob);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      pushJobLog("error", msg);
-
-      // Update job with error state - use functional update to get latest logs
-      setAllJobs((prev) => {
-        const currentJob = jobListUtils.findJob(prev, jobId);
-        const currentLogs = currentJob?.logs ?? [];
-        const errorLogs = [...currentLogs, { ts: Date.now(), level: "error" as const, msg }];
-        return jobListUtils.updateJobState(prev, jobId, "error", "Failed.", errorLogs, undefined);
-      });
+      console.error("Failed to create archive job:", msg);
+      alert(`Failed to create archive job: ${msg}`);
     }
   }
 
@@ -481,8 +448,13 @@ export default function Page() {
                         min={1}
                         step={1}
                         className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={mostRecentCount}
-                        onChange={(e) => setMostRecentCount(Number(e.target.value))}
+                        value={mostRecentParams.mostRecentCount}
+                        onChange={(e) =>
+                          setMostRecentParams((prev) => ({
+                            ...prev,
+                            mostRecentCount: Number(e.target.value),
+                          }))
+                        }
                       />
                     </div>
                     <div>
@@ -493,8 +465,13 @@ export default function Page() {
                         id="since"
                         type="datetime-local"
                         className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={mostRecentSince}
-                        onChange={(e) => setMostRecentSince(e.target.value)}
+                        value={mostRecentParams.mostRecentSince}
+                        onChange={(e) =>
+                          setMostRecentParams((prev) => ({
+                            ...prev,
+                            mostRecentSince: e.target.value,
+                          }))
+                        }
                       />
                     </div>
                   </div>
@@ -528,9 +505,9 @@ export default function Page() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Run Status</h2>
-                  {displayedJobId && (
+                  {displayedJob?.id && (
                     <div className="mt-1">
-                      <span className="text-xs text-gray-600">{displayedJobId}</span>
+                      <span className="text-xs text-gray-600">{displayedJob.id}</span>
                     </div>
                   )}
                 </div>
@@ -544,7 +521,7 @@ export default function Page() {
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition-colors">
                   <div className="flex items-center justify-between gap-2">
                     <span>{statusText}</span>
-                    {runState === "success" && displayedJob?.downloadUrl && (
+                    {displayedJob?.status === "success" && displayedJob?.downloadUrl && (
                       <a
                         href={displayedJob.downloadUrl}
                         download
@@ -577,17 +554,16 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* All Jobs */}
               <div>
                 <div className="mb-2 text-sm font-medium text-gray-900">All Jobs</div>
-                {allJobs.length === 0 ? (
+                {jobs.length === 0 ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
                     No jobs yet.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-auto">
-                    {allJobs.map((job: PastJob) => {
-                      const isOpen = displayedJobId === job.id;
+                    {jobs.map((job) => {
+                      const isOpen = displayedJob?.id === job.id;
                       return (
                         <div
                           key={job.id}
@@ -607,7 +583,9 @@ export default function Page() {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => openJob(job)}
+                                  onClick={() => {
+                                    setDisplayedJob(job);
+                                  }}
                                   className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 transition-colors whitespace-nowrap">
                                   Open
                                 </button>
