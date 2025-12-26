@@ -11,6 +11,13 @@
     "./logger": "./utils/logger.mjs"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "apify-client": "^2.21.0",
+    "dotenv": "^17.2.3",
+    "image-size": "^2.0.2",
+    "pdfkit": "^0.17.2",
+    "pino": "^10.1.0",
+    "zod": "^4.2.1"
+  }
 }
-
