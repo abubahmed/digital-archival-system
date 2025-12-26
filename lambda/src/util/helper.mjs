@@ -45,6 +45,11 @@ export const sanitizeFileName = (text, maxLength = 255) => {
     .substring(0, maxLength);
 };
 
+export const sanitizeText = (text) => {
+  if (!text) return "";
+  return String(text).trim().replace(/\0/g, ""); // Remove null bytes and trim
+};
+
 
 export const instantiateS3 = () => {
   const client = new S3Client({

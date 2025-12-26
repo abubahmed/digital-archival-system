@@ -1,0 +1,16 @@
+{
+  "name": "@digital-archival/lib",
+  "version": "1.0.0",
+  "description": "Pure archiver logic library for digital archival project",
+  "main": "index.mjs",
+  "type": "module",
+  "exports": {
+    "./instagram": "./archivers/instagram/instagramService.mjs",
+    "./dailyprince": "./archivers/dailyprince/dailyprinceService.mjs",
+    "./newsletter": "./archivers/newsletter/newsletterService.mjs",
+    "./logger": "./utils/logger.mjs"
+  },
+  "author": "",
+  "license": "ISC"
+}
+
